@@ -1,0 +1,6 @@
+{
+  "name": "BE Music",
+  "description": "A professional Android Music Player for local audio playback from storage.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
