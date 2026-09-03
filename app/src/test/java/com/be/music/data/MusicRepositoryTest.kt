@@ -17,6 +17,7 @@ class MusicRepositoryTest {
     private val playlistDao: PlaylistDao = mockk()
     private val filterSettingsDao: FilterSettingsDao = mockk()
     private val context: android.content.Context = mockk()
+    private val playHistoryManager: PlayHistoryManager = mockk()
 
     private lateinit var repository: MusicRepository
 
@@ -28,7 +29,8 @@ class MusicRepositoryTest {
             artistDao,
             albumDao,
             playlistDao,
-            filterSettingsDao
+            filterSettingsDao,
+            playHistoryManager
         )
     }
 

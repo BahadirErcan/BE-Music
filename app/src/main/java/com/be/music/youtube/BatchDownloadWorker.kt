@@ -195,6 +195,10 @@ class BatchDownloadWorker(
                             val files = downloadDir.listFiles()
                             files?.filter { it.name !in initialFileNames }?.forEach { file ->
                                 downloadedPaths.add(file.absolutePath)
+                                // Album metadata'sini duzelt
+                                if (file.extension.lowercase() in listOf("mp3", "m4a", "aac", "mp4", "flac", "ogg", "opus")) {
+                                    AlbumMetadataHelper.fixAlbumMetadata(file.absolutePath, playlistBaseName)
+                                }
                                 android.media.MediaScannerConnection.scanFile(
                                     appContext, arrayOf(file.absolutePath), null
                                 ) { path, uri ->
@@ -309,6 +313,10 @@ class BatchDownloadWorker(
                 val files = downloadDir.listFiles()
                 files?.filter { it.name !in initialFileNames }?.forEach { file ->
                     downloadedPaths.add(file.absolutePath)
+                    // Album metadata'sini duzelt
+                    if (file.extension.lowercase() in listOf("mp3", "m4a", "aac", "mp4", "flac", "ogg", "opus")) {
+                        AlbumMetadataHelper.fixAlbumMetadata(file.absolutePath, playlistBaseName)
+                    }
                     android.media.MediaScannerConnection.scanFile(
                         appContext, arrayOf(file.absolutePath), null
                     ) { path, uri ->

@@ -29,19 +29,29 @@ fun PlaylistDetailScreen(
 ) {
     val playlists by viewModel.playlistsState.collectAsState()
     val songs by viewModel.songsState.collectAsState()
+    val isSelectionMode by viewModel.isSelectionMode.collectAsState()
+    val selectedSongIds by viewModel.selectedSongIds.collectAsState()
 
     val currentSong by viewModel.currentSong.collectAsState()
     val isPlaying by viewModel.isPlaying.collectAsState()
     var showFullPlayer by remember { mutableStateOf(false) }
     var showDeleteDialog by remember { mutableStateOf<com.be.music.data.Song?>(null) }
+    var showRemoveFromPlaylistDialog by remember { mutableStateOf<com.be.music.data.Song?>(null) }
     var playlistSearchQuery by remember { mutableStateOf("") }
     var showPlayMenu by remember { mutableStateOf(false) }
     var showSortMenu by remember { mutableStateOf(false) }
     var showInvertConfirm by remember { mutableStateOf(false) }
+    var showPlaylistCreateDialog by remember { mutableStateOf(false) }
+    var showRemoveDialog by remember { mutableStateOf(false) }
     var sortMode by remember { mutableStateOf(PlaylistSort.ALPHA) }
     var sortReverse by remember { mutableStateOf(false) }
 
-    BackHandler(enabled = showFullPlayer) { showFullPlayer = false }
+    BackHandler(enabled = showFullPlayer || isSelectionMode) {
+        when {
+            showFullPlayer -> showFullPlayer = false
+            isSelectionMode -> viewModel.clearSelection()
+        }
+    }
 
     val playlist = remember(playlists, playlistId) { playlists.find { it.id == playlistId } }
 
@@ -63,11 +73,31 @@ fun PlaylistDetailScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(playlist?.name ?: stringResource(R.string.playlist_label)) },
+                title = {
+                    if (isSelectionMode) {
+                        Text(stringResource(R.string.select_song) + " (${selectedSongIds.size})")
+                    } else {
+                        Text(playlist?.name ?: stringResource(R.string.playlist_label))
+                    }
+                },
                 navigationIcon = {
-                    IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.back)) }
+                    if (isSelectionMode) {
+                        IconButton(onClick = { viewModel.clearSelection() }) {
+                            Icon(Icons.Default.Close, contentDescription = stringResource(R.string.close))
+                        }
+                    } else {
+                        IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.back)) }
+                    }
                 },
                 actions = {
+                    if (isSelectionMode) {
+                        IconButton(onClick = { showRemoveDialog = true }) {
+                            Icon(Icons.Default.Delete, contentDescription = stringResource(R.string.remove_mode))
+                        }
+                        IconButton(onClick = { if (selectedSongIds.isNotEmpty()) showPlaylistCreateDialog = true }) {
+                            Icon(Icons.Default.PlaylistAdd, contentDescription = stringResource(R.string.create_playlist_btn))
+                        }
+                    }
                     IconButton(
                         onClick = { showInvertConfirm = true },
                         enabled = playlist != null
@@ -106,7 +136,6 @@ fun PlaylistDetailScreen(
         } else {
             val listState = rememberLazyListState()
             Column(modifier = Modifier.fillMaxSize().padding(padding)) {
-                // Search + Play + Sort Row
                 Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
                     OutlinedTextField(
                         value = playlistSearchQuery,
@@ -157,14 +186,15 @@ fun PlaylistDetailScreen(
                                     val playList = if (playlistSearchQuery.isBlank()) sortedPlaylistSongs else visiblePlaylistSongs
                                     SongListItem(
                                         song = song,
-                                        isSelected = false,
-                                        isSelectionMode = false,
+                                        isSelected = selectedSongIds.contains(song.id),
+                                        isSelectionMode = isSelectionMode,
                                         isPlayingSong = currentSong?.id == song.id,
                                         onClick = { viewModel.playSong(song, playList) },
-                                        onSelect = { },
+                                        onSelect = { viewModel.toggleSongSelection(song.id) },
                                         onAddToPlaylist = { },
                                         onDeleteSong = { showDeleteDialog = song },
-                                        onPlaySong = { viewModel.playSong(song, playList) }
+                                        onPlaySong = { viewModel.playSong(song, playList) },
+                                        onRemoveFromPlaylist = { showRemoveFromPlaylistDialog = song }
                                     )
                                 }
                             }
@@ -225,6 +255,73 @@ fun PlaylistDetailScreen(
                     Text(stringResource(R.string.cancel))
                 }
             }
+        )
+    }
+
+    if (showRemoveDialog) {
+        AlertDialog(
+            onDismissRequest = { showRemoveDialog = false },
+            title = { Text(stringResource(R.string.remove)) },
+            text = { Text(stringResource(R.string.remove_selected, selectedSongIds.size)) },
+            confirmButton = {
+                Button(onClick = { viewModel.deleteSelectedSongs(); showRemoveDialog = false }) {
+                    Text(stringResource(R.string.yes))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showRemoveDialog = false }) {
+                    Text(stringResource(R.string.no))
+                }
+            }
+        )
+    }
+
+    if (showPlaylistCreateDialog) {
+        var playlistName by remember { mutableStateOf("") }
+        val initialSelected = remember { selectedSongIds.toList() }
+        AlertDialog(
+            onDismissRequest = { showPlaylistCreateDialog = false },
+            title = { Text(stringResource(R.string.create_new_playlist)) },
+            text = {
+                OutlinedTextField(
+                    value = playlistName,
+                    onValueChange = { playlistName = it },
+                    label = { Text(stringResource(R.string.playlist_name)) },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            },
+            confirmButton = {
+                Button(onClick = {
+                    if (playlistName.isNotBlank()) {
+                        viewModel.createPlaylist(playlistName, initialSelected) {
+                            showPlaylistCreateDialog = false
+                            viewModel.clearSelection()
+                            navController.navigate("song_picker/$it")
+                        }
+                    }
+                }) { Text(stringResource(R.string.create)) }
+            },
+            dismissButton = { TextButton(onClick = { showPlaylistCreateDialog = false }) { Text(stringResource(R.string.cancel)) } }
+        )
+    }
+
+    if (showRemoveFromPlaylistDialog != null) {
+        val targetSong = showRemoveFromPlaylistDialog!!
+        AlertDialog(
+            onDismissRequest = { showRemoveFromPlaylistDialog = null },
+            title = { Text(stringResource(R.string.remove_from_playlist)) },
+            text = { Text(stringResource(R.string.remove_from_playlist_confirm, targetSong.title)) },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        viewModel.removeSongFromPlaylist(playlistId, targetSong.id)
+                        showRemoveFromPlaylistDialog = null
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+                ) { Text(stringResource(R.string.remove)) }
+            },
+            dismissButton = { TextButton(onClick = { showRemoveFromPlaylistDialog = null }) { Text(stringResource(R.string.cancel)) } }
         )
     }
 }

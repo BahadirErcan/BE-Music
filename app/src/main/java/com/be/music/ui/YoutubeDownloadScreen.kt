@@ -1,5 +1,6 @@
 package com.be.music.ui
 
+import android.annotation.SuppressLint
 import android.app.Activity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -33,6 +34,7 @@ import com.be.music.premium.PremiumManager
 import com.be.music.youtube.YoutubeVideo
 import com.be.music.youtube.YoutubeVideoItem
 
+@SuppressLint("LocalContextGetResourceValueCall")
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun YoutubeDownloadScreen(
@@ -67,6 +69,12 @@ fun YoutubeDownloadScreen(
     LaunchedEffect(Unit) {
         viewModel.showAdEvent.collect {
             activity?.let { act -> viewModel.showRewardedAd(act) }
+        }
+    }
+
+    LaunchedEffect(Unit) {
+        viewModel.downloadCompleteEvent.collect {
+            musicViewModel.scanMusic(force = true)
         }
     }
 

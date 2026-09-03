@@ -1,6 +1,7 @@
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 plugins {
+
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.google.devtools.ksp)
@@ -13,16 +14,15 @@ plugins {
 
 android {
     namespace = "com.be.music"
-    compileSdk = 35
+    compileSdk = 36
 
     defaultConfig {
         applicationId = "com.be.music"
         minSdk = 26
         targetSdk = 35
-        versionCode = 4
-        versionName = "1.5.0"
+        versionCode = 12
+        versionName = "1.7.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
-        signingConfig = signingConfigs.getByName("debug")
 
         ndk {
             abiFilters.addAll(listOf("x86", "x86_64", "armeabi-v7a", "arm64-v8a"))
@@ -83,6 +83,8 @@ android {
             useLegacyPackaging = true
         }
     }
+    buildToolsVersion = "37.0.0"
+    ndkVersion = "28.2.13676358"
 }
 
 ksp {
@@ -149,6 +151,9 @@ dependencies {
 
     // DataStore
     implementation(libs.androidx.datastore.preferences)
+
+    // Audio metadata (jaudiotagger)
+    implementation(libs.jaudiotagger)
 
     // Testing
     testImplementation(libs.junit)

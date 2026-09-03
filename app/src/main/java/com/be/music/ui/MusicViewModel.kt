@@ -167,6 +167,12 @@ class MusicViewModel @Inject constructor(
     val lyricsSearchResults = _lyricsSearchResults.asStateFlow()
     private val _lyricsSearchLoading = MutableStateFlow(false)
     val lyricsSearchLoading = _lyricsSearchLoading.asStateFlow()
+
+    val playHistory = repository.playHistoryManager.history.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    fun clearPlayHistory() {
+        viewModelScope.launch { repository.playHistoryManager.clearHistory() }
+    }
     private val _lyricsSearchError = MutableStateFlow<String?>(null)
     val lyricsSearchError = _lyricsSearchError.asStateFlow()
 
@@ -204,6 +210,7 @@ class MusicViewModel @Inject constructor(
                     _currentSong.value = song
                     loadLyricsForSong(song)
                     updateNextSong()
+                    song?.let { repository.playHistoryManager.addEntry(it) }
                 }
             }
             override fun onIsPlayingChanged(isPlaying: Boolean) {
@@ -331,6 +338,14 @@ class MusicViewModel @Inject constructor(
     fun addSongToPlaylist(playlist: Playlist, songId: Long) {
         viewModelScope.launch {
             val updatedIds = (playlist.songIds + songId).distinct()
+            repository.updatePlaylist(playlist.copy(songIds = updatedIds))
+        }
+    }
+
+    fun removeSongFromPlaylist(playlistId: Int, songId: Long) {
+        viewModelScope.launch {
+            val playlist = playlistsState.value.find { it.id == playlistId } ?: return@launch
+            val updatedIds = playlist.songIds.filter { it != songId }
             repository.updatePlaylist(playlist.copy(songIds = updatedIds))
         }
     }
@@ -754,6 +769,17 @@ class MusicViewModel @Inject constructor(
     fun deleteSong(song: Song) {
         viewModelScope.launch {
             repository.deleteSong(song)
+        }
+    }
+
+    fun deleteSelectedSongs() {
+        val ids = _selectedSongIds.value
+        viewModelScope.launch {
+            val songs = songsState.value.filter { it.id in ids }
+            songs.forEach { song ->
+                repository.deleteSong(song)
+            }
+            clearSelection()
         }
     }
 }

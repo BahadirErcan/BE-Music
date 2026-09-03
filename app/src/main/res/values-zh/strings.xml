@@ -238,4 +238,15 @@
     <string name="invert_playlist">反转播放列表</string>
     <string name="invert_playlist_confirm">将移除此播放列表中的 %1$d 首歌曲，并添加不在其中的 %2$d 首歌曲。此操作无法撤销</string>
     <string name="invert">反转</string>
+    <string name="menu_options">菜单</string>
+    <string name="remove_selected">您要删除 %1$d 首歌曲吗？</string>
+    <string name="create_playlist_btn">创建播放列表</string>
+    <string name="selection_mode">选择模式</string>
+    <string name="remove_mode">删除</string>
+    <string name="history">历史</string>
+    <string name="clear_history">清除历史</string>
+    <string name="clear_history_confirm">确定要清除历史记录吗？</string>
+    <string name="no_history">暂无历史记录</string>
+    <string name="skip_silence">跳过静音</string>
+    <string name="skip_silence_description">播放时自动跳过静音部分</string>
 </resources>

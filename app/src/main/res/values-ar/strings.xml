@@ -238,4 +238,15 @@
     <string name="invert_playlist">عكس قائمة التشغيل</string>
     <string name="invert_playlist_confirm">سيتم إزالة %1$d أغنية من هذه القائمة وإضافة %2$d أغنية غير موجودة فيها. لا يمكن التراجع عن هذا الإجراء</string>
     <string name="invert">عكس</string>
+    <string name="menu_options">القائمة</string>
+    <string name="remove_selected">هل تريد إزالة %1$d أغاني؟</string>
+    <string name="create_playlist_btn">إنشاء قائمة تشغيل</string>
+    <string name="selection_mode">وضع التحديد</string>
+    <string name="remove_mode">إزالة</string>
+    <string name="history">السجل</string>
+    <string name="clear_history">مسح السجل</string>
+    <string name="clear_history_confirm">هل تريد مسح السجل؟</string>
+    <string name="no_history">لا يوجد سجل</string>
+    <string name="skip_silence">تخطي الصمت</string>
+    <string name="skip_silence_description">تخطي الأجزاء الصامتة تلقائيًا أثناء التشغيل</string>
 </resources>

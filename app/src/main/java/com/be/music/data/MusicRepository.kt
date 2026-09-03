@@ -27,7 +27,8 @@ class MusicRepository @Inject constructor(
     private val artistDao: ArtistDao,
     private val albumDao: AlbumDao,
     private val playlistDao: PlaylistDao,
-    private val filterSettingsDao: FilterSettingsDao
+    private val filterSettingsDao: FilterSettingsDao,
+    val playHistoryManager: PlayHistoryManager
 ) {
     val allSongs: Flow<List<Song>> = songDao.getAllSongs()
     val allArtists: Flow<List<Artist>> = artistDao.getAllArtists()
@@ -187,12 +188,18 @@ class MusicRepository @Inject constructor(
         }
     }
 
+    private val playlistDir: File by lazy {
+        File(android.os.Environment.getExternalStoragePublicDirectory(android.os.Environment.DIRECTORY_MUSIC), "Playlist")
+    }
+
+    private fun ensurePlaylistDir(): File {
+        if (!playlistDir.exists()) playlistDir.mkdirs()
+        return playlistDir
+    }
+
     private suspend fun exportPlaylistToJson(playlist: Playlist): String? = withContext(Dispatchers.IO) {
         try {
-            val externalBase = context.getExternalFilesDir(null)
-            val baseDir = externalBase ?: context.filesDir
-            val plDir = File(baseDir, "Music/pl")
-            if (!plDir.exists()) plDir.mkdirs()
+            val plDir = ensurePlaylistDir()
 
             val sanitizedName = playlist.name.replace("[^a-zA-Z0-9-_]".toRegex(), "_")
             val plFile = File(plDir, "playlist_${playlist.id}_$sanitizedName.json")
@@ -216,11 +223,12 @@ class MusicRepository @Inject constructor(
 
     suspend fun importPlaylistsFromJson() = withContext(Dispatchers.IO) {
         try {
-            val externalBase = context.getExternalFilesDir(null)
-            val dirsToCheck = listOfNotNull(
-                externalBase?.let { File(it, "Music/pl") },
+            val newDir = File(android.os.Environment.getExternalStoragePublicDirectory(android.os.Environment.DIRECTORY_MUSIC), "Playlist")
+            val oldDirs = listOfNotNull(
+                context.getExternalFilesDir(null)?.let { File(it, "Music/pl") },
                 File(context.filesDir, "Music/pl")
             )
+            val dirsToCheck = listOf(newDir) + oldDirs
 
             for (plDir in dirsToCheck) {
                 if (plDir.exists() && plDir.isDirectory) {
@@ -263,9 +271,7 @@ class MusicRepository @Inject constructor(
                 val jsonString = inputStream.bufferedReader().use { it.readText() }
                 val importedPlaylist = Json.decodeFromString<Playlist>(jsonString)
 
-                val externalBase = context.getExternalFilesDir(null) ?: context.filesDir
-                val plDir = File(externalBase, "Music/pl")
-                if (!plDir.exists()) plDir.mkdirs()
+                val plDir = ensurePlaylistDir()
 
                 val sanitizedName = importedPlaylist.name.replace("[^a-zA-Z0-9-_]".toRegex(), "_")
                 val plFile = File(plDir, "playlist_${System.currentTimeMillis()}_$sanitizedName.json")
@@ -329,7 +335,23 @@ class MusicRepository @Inject constructor(
                 }
             }
 
-            // 1. MediaStore'u Güncelle
+            // 0. Dosyanin gercek metadata'sini kalici olarak guncelle (jaudiotagger)
+            try {
+                val targetFile = File(currentPath)
+                if (targetFile.exists() && targetFile.extension.lowercase() in listOf("mp3", "m4a", "aac", "mp4", "flac", "ogg", "opus")) {
+                    val audioFile = org.jaudiotagger.audio.AudioFileIO.read(targetFile)
+                    val tag = audioFile.tag ?: audioFile.createDefaultTag()
+                    tag.setField(org.jaudiotagger.tag.FieldKey.TITLE, newTitle)
+                    tag.setField(org.jaudiotagger.tag.FieldKey.ARTIST, newArtist)
+                    tag.setField(org.jaudiotagger.tag.FieldKey.ALBUM, newAlbum)
+                    audioFile.commit()
+                    Log.d("MusicRepository", "Dosya metadata'si kalici olarak guncellendi: $currentPath")
+                }
+            } catch (e: Exception) {
+                Log.e("MusicRepository", "Dosya metadata yazma hatasi", e)
+            }
+
+            // 1. MediaStore'u Guncelle
             val values = android.content.ContentValues().apply {
                 put(MediaStore.Audio.Media.TITLE, newTitle)
                 put(MediaStore.Audio.Media.ARTIST, newArtist)
@@ -343,16 +365,7 @@ class MusicRepository @Inject constructor(
             )
             context.contentResolver.update(songUri, values, null, null)
 
-            // 2. Dosyayı yeniden taratarak güncel bilgileri sisteme kaydet
-            android.media.MediaScannerConnection.scanFile(
-                context,
-                arrayOf(currentPath),
-                null
-            ) { path, uri ->
-                Log.d("MusicRepository", "Tarandı ve güncellendi: $path -> $uri")
-            }
-
-            // 3. Room DB'yi Güncelle
+            // 2. Room DB'yi Guncelle
             val updatedSong = song.copy(
                 title = newTitle,
                 artistName = newArtist,
@@ -362,7 +375,7 @@ class MusicRepository @Inject constructor(
             )
             songDao.updateSong(updatedSong)
         } catch (e: Exception) {
-            Log.e("MusicRepository", "Metadata güncellenemedi", e)
+            Log.e("MusicRepository", "Metadata guncellenemedi", e)
         }
     }
 

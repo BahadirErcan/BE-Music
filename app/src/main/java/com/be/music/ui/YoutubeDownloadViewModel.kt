@@ -1,5 +1,6 @@
 package com.be.music.ui
 
+import android.annotation.SuppressLint
 import android.app.Activity
 import android.content.Context
 import androidx.lifecycle.ViewModel
@@ -78,6 +79,9 @@ class YoutubeDownloadViewModel @Inject constructor(
     private val _showAdEvent = MutableSharedFlow<Unit>()
     val showAdEvent: SharedFlow<Unit> = _showAdEvent.asSharedFlow()
 
+    private val _downloadCompleteEvent = MutableSharedFlow<Unit>()
+    val downloadCompleteEvent: SharedFlow<Unit> = _downloadCompleteEvent.asSharedFlow()
+
     val premiumState: StateFlow<PremiumState> = premiumManager.state
 
     init {
@@ -141,6 +145,7 @@ class YoutubeDownloadViewModel @Inject constructor(
                 if (workInfo.state == androidx.work.WorkInfo.State.SUCCEEDED) {
                     val newCount = BeMusicApplication.rewardedAdManager.incrementDownloadCount()
                     _downloadCount.value = newCount
+                    viewModelScope.launch { _downloadCompleteEvent.emit(Unit) }
                     if (BeMusicApplication.rewardedAdManager.shouldShowAd()) {
                         viewModelScope.launch { _showAdEvent.emit(Unit) }
 
@@ -181,6 +186,7 @@ class YoutubeDownloadViewModel @Inject constructor(
         resolvedLines.distinct()
     }
 
+    @SuppressLint("StringFormatMatches")
     fun startSpotifyPlaylistDownload(context: Context, url: String, quality: String, downloadLyrics: Boolean) {
         _spotifyDownloading.value = true
         _spotifyError.value = null
@@ -241,6 +247,7 @@ class YoutubeDownloadViewModel @Inject constructor(
         _spotifyStatus.value = null
     }
 
+    @SuppressLint("StringFormatMatches")
     fun startBatchDownload(context: Context, trackLines: List<String>, quality: String, downloadLyrics: Boolean, parallelLimit: Int = 3) {
         val validLines = trackLines.filter { it.isNotBlank() }
         if (validLines.isEmpty()) {
@@ -269,6 +276,7 @@ class YoutubeDownloadViewModel @Inject constructor(
                 _batchDownloading.value = false
                 _downloadCount.value = BeMusicApplication.rewardedAdManager.downloadCount
                 if (workInfo.state == androidx.work.WorkInfo.State.SUCCEEDED) {
+                    viewModelScope.launch { _downloadCompleteEvent.emit(Unit) }
                     if (BeMusicApplication.rewardedAdManager.shouldShowAd()) {
                         viewModelScope.launch { _showAdEvent.emit(Unit) }
                     }

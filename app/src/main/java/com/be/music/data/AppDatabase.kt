@@ -14,7 +14,7 @@ import androidx.room.TypeConverters
         Playlist::class,
         FilterSettings::class
     ],
-    version = 6,
+    version = 7,
     exportSchema = false
 )
 @TypeConverters(Converters::class)

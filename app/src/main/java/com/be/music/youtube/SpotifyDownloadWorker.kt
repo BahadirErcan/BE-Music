@@ -55,7 +55,7 @@ class SpotifyDownloadWorker(
             setForeground(foregroundInfo)
         } catch (_: Exception) {}
 
-        // 1. Spotify playlist'ten şarkı listesini çek
+        // 1. Spotify playlist'ten sarki listesini cek
         val tracks: List<SpotifyTrack>
         try {
             tracks = SpotifyPlaylistParser.parsePlaylist(playlistUrl)
@@ -65,6 +65,11 @@ class SpotifyDownloadWorker(
             showErrorNotification(notificationId, errorMsg)
             return Result.failure(workDataOf("error" to errorMsg))
         }
+
+        // Spotify playlist adini cek (album icin)
+        val spotifyPlaylistName = try {
+            SpotifyPlaylistParser.fetchPlaylistName(playlistUrl)
+        } catch (_: Exception) { null }
 
         if (tracks.isEmpty()) {
             val errorMsg = appContext.getString(R.string.spotify_no_songs)
@@ -145,6 +150,10 @@ class SpotifyDownloadWorker(
                 val files = downloadDir.listFiles()
                 val currentTime = System.currentTimeMillis()
                 files?.filter { currentTime - it.lastModified() < 30000 }?.forEach { file ->
+                    // Album metadata'sini duzelt
+                    if (file.extension.lowercase() in listOf("mp3", "m4a", "aac", "mp4", "flac", "ogg", "opus")) {
+                        AlbumMetadataHelper.fixAlbumMetadata(file.absolutePath, spotifyPlaylistName)
+                    }
                     android.media.MediaScannerConnection.scanFile(
                         appContext, arrayOf(file.absolutePath), null
                     ) { path, uri ->

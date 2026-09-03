@@ -1,6 +1,7 @@
 package com.be.music.ui
 
 import android.Manifest
+import android.annotation.SuppressLint
 import android.content.pm.PackageManager
 import android.os.Build
 import android.widget.Toast
@@ -8,6 +9,7 @@ import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.*
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -15,9 +17,12 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
+import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.*
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
@@ -40,6 +45,7 @@ import android.os.Environment
 import android.content.Intent
 import android.net.Uri
 import android.provider.Settings
+import android.widget.Toast.makeText
 import androidx.core.content.FileProvider
 import java.io.File
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -48,6 +54,7 @@ import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.graphics.graphicsLayer
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -62,7 +69,7 @@ fun MainMusicScreen(viewModel: MusicViewModel, navController: NavController) {
             if (Environment.isExternalStorageManager()) {
                 viewModel.scanMusic(force = true)
             } else {
-                Toast.makeText(context, "Tüm dosyalara erişim izni verilmedi. Silme ve indirme işlemleri çalışmayabilir.", Toast.LENGTH_LONG).show()
+                makeText(context, "Tüm dosyalara erişim izni verilmedi. Silme ve indirme işlemleri çalışmayabilir.", Toast.LENGTH_LONG).show()
             }
         }
     }
@@ -84,7 +91,7 @@ fun MainMusicScreen(viewModel: MusicViewModel, navController: NavController) {
                 }
             }
         } else {
-            Toast.makeText(context, "Storage permissions are required", Toast.LENGTH_LONG).show()
+            makeText(context, "Storage permissions are required", Toast.LENGTH_LONG).show()
         }
     }
 
@@ -130,9 +137,10 @@ fun MainMusicScreen(viewModel: MusicViewModel, navController: NavController) {
     var showPlaylistCreateDialog by remember { mutableStateOf(false) }
     var showAddToPlaylistDialog by remember { mutableStateOf<Song?>(null) }
     var showFullPlayer by remember { mutableStateOf(false) }
-    // Madde 15: Şarkı silme onay diyaloğu
     var showDeleteDialog by remember { mutableStateOf<Song?>(null) }
     var importMessage by remember { mutableStateOf("") }
+    var isRefreshing by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
 
     val importPlaylistLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.OpenDocument()
@@ -140,7 +148,7 @@ fun MainMusicScreen(viewModel: MusicViewModel, navController: NavController) {
         if (uri != null) {
             viewModel.importPlaylistFromUri(uri) { success, message ->
                 importMessage = message
-                Toast.makeText(context, message, Toast.LENGTH_LONG).show()
+                makeText(context, message, Toast.LENGTH_LONG).show()
             }
         }
     }
@@ -161,7 +169,14 @@ fun MainMusicScreen(viewModel: MusicViewModel, navController: NavController) {
                         Text(
                             "BE MUSIC", 
                             fontWeight = FontWeight.Bold,
-                            modifier = Modifier.clickable { viewModel.scanMusic(force = true) }
+                            modifier = Modifier.clickable { 
+                                scope.launch {
+                                    isRefreshing = true
+                                    viewModel.scanMusic(force = true)
+                                    delay(800)
+                                    isRefreshing = false
+                                }
+                            }
                         ) 
                     },
                     navigationIcon = {
@@ -185,28 +200,95 @@ fun MainMusicScreen(viewModel: MusicViewModel, navController: NavController) {
 
 
                     actions = {
-                        var showSortMenu by remember { mutableStateOf(false) }
-                        IconButton(onClick = { showSortMenu = true }) {
-                            Icon(Icons.Default.Sort, contentDescription = stringResource(R.string.sort))
-                        }
-                        DropdownMenu(expanded = showSortMenu, onDismissRequest = { showSortMenu = false }) {
-                            DropdownMenuItem(text = { Text(stringResource(R.string.sort_az)) }, onClick = { viewModel.setSortOrder(com.be.music.ui.SortOrder.NAME); showSortMenu = false })
-                            DropdownMenuItem(text = { Text(stringResource(R.string.sort_date)) }, onClick = { viewModel.setSortOrder(com.be.music.ui.SortOrder.DATE); showSortMenu = false })
-                            DropdownMenuItem(text = { Text(stringResource(R.string.sort_duration)) }, onClick = { viewModel.setSortOrder(com.be.music.ui.SortOrder.DURATION); showSortMenu = false })
-                            Divider()
-                            DropdownMenuItem(text = { Text(stringResource(R.string.sort_reverse)) }, onClick = { viewModel.toggleSortReverse(); showSortMenu = false })
-                        }
+                        var showMainDropdown by remember { mutableStateOf(false) }
+                        var showSortSubmenu by remember { mutableStateOf(false) }
+                        var showRemoveDialog by remember { mutableStateOf(false) }
+
                         if (isSelectionMode) {
-                            IconButton(onClick = { if (selectedSongIds.isNotEmpty()) showPlaylistCreateDialog = true }) {
-                                Icon(Icons.Default.PlaylistAdd, contentDescription = null)
+                            IconButton(onClick = { showRemoveDialog = true }) {
+                                Icon(Icons.Default.Delete, contentDescription = stringResource(R.string.remove_mode))
                             }
-                        } else {
-                            IconButton(onClick = { viewModel.toggleSelectionMode() }) {
-                                Icon(Icons.Default.LibraryAddCheck, tint = if (isSelectionMode) MaterialTheme.colorScheme.primary else LocalContentColor.current, contentDescription = null)
+                            IconButton(onClick = { if (selectedSongIds.isNotEmpty()) showPlaylistCreateDialog = true }) {
+                                Icon(Icons.Default.PlaylistAdd, contentDescription = stringResource(R.string.create_playlist_btn))
                             }
                         }
-                        IconButton(onClick = { navController.navigate("settings") }) {
-                            Icon(Icons.Default.Settings, contentDescription = stringResource(R.string.settings))
+
+                        Box {
+                            IconButton(onClick = { showMainDropdown = true }) {
+                                Icon(Icons.Default.MoreVert, contentDescription = stringResource(R.string.menu_options))
+                            }
+                            DropdownMenu(
+                                expanded = showMainDropdown,
+                                onDismissRequest = { showMainDropdown = false; showSortSubmenu = false }
+                            ) {
+                                if (!showSortSubmenu) {
+                                    DropdownMenuItem(
+                                        text = { Text(stringResource(R.string.history)) },
+                                        onClick = { navController.navigate("history"); showMainDropdown = false },
+                                        leadingIcon = { Icon(Icons.Default.History, contentDescription = null) }
+                                    )
+                                    Divider()
+                                    DropdownMenuItem(
+                                        text = { Text(stringResource(R.string.sort)) },
+                                        onClick = { showSortSubmenu = true },
+                                        leadingIcon = { Icon(Icons.Default.Sort, contentDescription = null) }
+                                    )
+                                    Divider()
+                                    DropdownMenuItem(
+                                        text = { Text(stringResource(R.string.selection_mode)) },
+                                        onClick = { viewModel.toggleSelectionMode(); showMainDropdown = false },
+                                        leadingIcon = { Icon(Icons.Default.LibraryAddCheck, contentDescription = null) }
+                                    )
+                                    Divider()
+                                    DropdownMenuItem(
+                                        text = { Text(stringResource(R.string.settings)) },
+                                        onClick = { navController.navigate("settings"); showMainDropdown = false },
+                                        leadingIcon = { Icon(Icons.Default.Settings, contentDescription = null) }
+                                    )
+                                } else {
+                                    DropdownMenuItem(
+                                        text = { Text(stringResource(R.string.back)) },
+                                        onClick = { showSortSubmenu = false },
+                                        leadingIcon = { Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = null) }
+                                    )
+                                    Divider()
+                                    DropdownMenuItem(
+                                        text = { Text(stringResource(R.string.sort_az)) },
+                                        onClick = { viewModel.setSortOrder(SortOrder.NAME); showMainDropdown = false; showSortSubmenu = false }
+                                    )
+                                    DropdownMenuItem(
+                                        text = { Text(stringResource(R.string.sort_date)) },
+                                        onClick = { viewModel.setSortOrder(SortOrder.DATE); showMainDropdown = false; showSortSubmenu = false }
+                                    )
+                                    DropdownMenuItem(
+                                        text = { Text(stringResource(R.string.sort_duration)) },
+                                        onClick = { viewModel.setSortOrder(SortOrder.DURATION); showMainDropdown = false; showSortSubmenu = false }
+                                    )
+                                    Divider()
+                                    DropdownMenuItem(
+                                        text = { Text(stringResource(R.string.sort_reverse)) },
+                                        onClick = { viewModel.toggleSortReverse(); showMainDropdown = false; showSortSubmenu = false }
+                                    )
+                                }
+                            }
+                        }
+
+                        if (showRemoveDialog) {
+                            AlertDialog(
+                                onDismissRequest = { showRemoveDialog = false },
+                                title = { Text(stringResource(R.string.remove)) },
+                                text = { Text(stringResource(R.string.remove_selected, selectedSongIds.size)) },
+                                confirmButton = {
+                                    Button(onClick = { viewModel.deleteSelectedSongs(); showRemoveDialog = false }) {
+                                        Text(stringResource(R.string.yes))
+                                    }
+                                },
+                                dismissButton = {
+                                    TextButton(onClick = { showRemoveDialog = false }) {
+                                        Text(stringResource(R.string.no))
+                                    }
+                                }
+                            )
                         }
                     }
                 )
@@ -261,43 +343,74 @@ fun MainMusicScreen(viewModel: MusicViewModel, navController: NavController) {
         }
     ) { innerPadding ->
         Box(modifier = Modifier.fillMaxSize().padding(innerPadding)) {
-            when (selectedTab) {
-                0 -> SongsTab(
-                    songs, isSelectionMode, selectedSongIds,
-                    currentSongId = currentSong?.id,
-                    onSelectSong = { viewModel.toggleSongSelection(it.id) },
-                    onSongClick = { song -> if (isSelectionMode) viewModel.toggleSongSelection(song.id) else viewModel.playSong(song, songs) },
-                    onAddToPlaylist = { showAddToPlaylistDialog = it },
-                    onDeleteSong = { showDeleteDialog = it },
-                    onPlaySong = { viewModel.playSong(it, songs) }
-                )
-                1 -> PlaylistsTab(
-                    playlists,
-                    songs,
-                    viewModel,
-                    onImportClick = { importPlaylistLauncher.launch(arrayOf("application/json", "text/*")) },
-                    onCreatePlaylistClick = { showPlaylistCreateDialog = true },
-                    onPlaylistClick = { playlist -> navController.navigate("playlist_detail/${playlist.id}") },
-                    navController = navController
-                )
-                2 -> ArtistsTab(
-                    songs, isSelectionMode, selectedSongIds,
-                    currentSongId = currentSong?.id,
-                    onSongClick = { song, artistSongs -> if (isSelectionMode) viewModel.toggleSongSelection(song.id) else viewModel.playSong(song, artistSongs) },
-                    onLongClick = { song -> if (!isSelectionMode) viewModel.toggleSelectionMode(); viewModel.toggleSongSelection(song.id) },
-                    onArtistClick = { artistSongs -> if (isSelectionMode) viewModel.toggleArtistSelection(artistSongs) else viewModel.playArtistSongs(artistSongs) },
-                    onPlaySong = { song, artistSongs -> viewModel.playSong(song, artistSongs) },
-                    onDeleteSong = { showDeleteDialog = it }
-                )
-                3 -> AlbumsTab(
-                    songs, isSelectionMode, selectedSongIds,
-                    currentSongId = currentSong?.id,
-                    onSongClick = { song, albumSongs -> if (isSelectionMode) viewModel.toggleSongSelection(song.id) else viewModel.playSong(song, albumSongs) },
-                    onLongClick = { song -> if (!isSelectionMode) viewModel.toggleSelectionMode(); viewModel.toggleSongSelection(song.id) },
-                    onAlbumClick = { albumSongs -> if (isSelectionMode) viewModel.toggleAlbumSelection(albumSongs) else viewModel.playAlbumSongs(albumSongs) },
-                    onPlaySong = { song, albumSongs -> viewModel.playSong(song, albumSongs) },
-                    onDeleteSong = { showDeleteDialog = it }
-                )
+            val pullRefreshState = rememberPullToRefreshState()
+
+            PullToRefreshBox(
+                isRefreshing = isRefreshing,
+                onRefresh = {
+                    scope.launch {
+                        isRefreshing = true
+                        viewModel.scanMusic(force = true)
+                        delay(800)
+                        isRefreshing = false
+                    }
+                },
+                state = pullRefreshState,
+                modifier = Modifier.fillMaxSize()
+            ) {
+                AnimatedContent(
+                    targetState = selectedTab,
+                    transitionSpec = {
+                        if (targetState > initialState) {
+                            slideInHorizontally(tween(300)) { it } + fadeIn(tween(300)) togetherWith
+                            slideOutHorizontally(tween(300)) { -it } + fadeOut(tween(300))
+                        } else {
+                            slideInHorizontally(tween(300)) { -it } + fadeIn(tween(300)) togetherWith
+                            slideOutHorizontally(tween(300)) { it } + fadeOut(tween(300))
+                        }
+                    },
+                    modifier = Modifier.fillMaxSize(),
+                    label = "tab_content"
+                ) { tab ->
+                    when (tab) {
+                        0 -> SongsTab(
+                            songs, isSelectionMode, selectedSongIds,
+                            currentSongId = currentSong?.id,
+                            onSelectSong = { viewModel.toggleSongSelection(it.id) },
+                            onSongClick = { song -> if (isSelectionMode) viewModel.toggleSongSelection(song.id) else viewModel.playSong(song, songs) },
+                            onAddToPlaylist = { showAddToPlaylistDialog = it },
+                            onDeleteSong = { showDeleteDialog = it },
+                            onPlaySong = { viewModel.playSong(it, songs) }
+                        )
+                        1 -> PlaylistsTab(
+                            playlists,
+                            songs,
+                            viewModel,
+                            onImportClick = { importPlaylistLauncher.launch(arrayOf("application/json", "text/*")) },
+                            onCreatePlaylistClick = { showPlaylistCreateDialog = true },
+                            onPlaylistClick = { playlist -> navController.navigate("playlist_detail/${playlist.id}") },
+                            navController = navController
+                        )
+                        2 -> ArtistsTab(
+                            songs, isSelectionMode, selectedSongIds,
+                            currentSongId = currentSong?.id,
+                            onSongClick = { song, artistSongs -> if (isSelectionMode) viewModel.toggleSongSelection(song.id) else viewModel.playSong(song, artistSongs) },
+                            onLongClick = { song -> if (!isSelectionMode) viewModel.toggleSelectionMode(); viewModel.toggleSongSelection(song.id) },
+                            onArtistClick = { artistSongs -> if (isSelectionMode) viewModel.toggleArtistSelection(artistSongs) else viewModel.playArtistSongs(artistSongs) },
+                            onPlaySong = { song, artistSongs -> viewModel.playSong(song, artistSongs) },
+                            onDeleteSong = { showDeleteDialog = it }
+                        )
+                        3 -> AlbumsTab(
+                            songs, isSelectionMode, selectedSongIds,
+                            currentSongId = currentSong?.id,
+                            onSongClick = { song, albumSongs -> if (isSelectionMode) viewModel.toggleSongSelection(song.id) else viewModel.playSong(song, albumSongs) },
+                            onLongClick = { song -> if (!isSelectionMode) viewModel.toggleSelectionMode(); viewModel.toggleSongSelection(song.id) },
+                            onAlbumClick = { albumSongs -> if (isSelectionMode) viewModel.toggleAlbumSelection(albumSongs) else viewModel.playAlbumSongs(albumSongs) },
+                            onPlaySong = { song, albumSongs -> viewModel.playSong(song, albumSongs) },
+                            onDeleteSong = { showDeleteDialog = it }
+                        )
+                    }
+                }
             }
         }
     }
@@ -394,6 +507,7 @@ fun SongsTab(
     }
 }
 
+@SuppressLint("LocalContextGetResourceValueCall")
 @Composable
 fun PlaylistsTab(
     playlists: List<Playlist>,
@@ -461,10 +575,10 @@ fun PlaylistsTab(
                                                             }
                                                             context.startActivity(Intent.createChooser(shareIntent, context.getString(R.string.export_label)))
                                                         } catch (e: Exception) {
-                                                            Toast.makeText(context, "${context.getString(R.string.export_failed)}: ${e.message}", Toast.LENGTH_LONG).show()
+                                                            makeText(context, "${context.getString(R.string.export_failed)}: ${e.message}", Toast.LENGTH_LONG).show()
                                                         }
                                                     } else {
-                                                        Toast.makeText(context, context.getString(R.string.export_failed), Toast.LENGTH_LONG).show()
+                                                        makeText(context, context.getString(R.string.export_failed), Toast.LENGTH_LONG).show()
                                                     }
                                                 }
                                             }, leadingIcon = { Icon(Icons.Default.UploadFile, contentDescription = null) })
@@ -512,7 +626,6 @@ fun PersistentMiniPlayer(currentSong: Song, isPlaying: Boolean, position: Long, 
     }
 }
 
-// Madde 10, 11, 15: SongListItem güncellendi
 @Composable
 fun SongListItem(
     song: Song,
@@ -523,7 +636,8 @@ fun SongListItem(
     onSelect: () -> Unit,
     onAddToPlaylist: () -> Unit,
     onDeleteSong: () -> Unit,
-    onPlaySong: () -> Unit
+    onPlaySong: () -> Unit,
+    onRemoveFromPlaylist: (() -> Unit)? = null
 ) {
     var showDropdown by remember { mutableStateOf(false) }
     val backgroundColor = when {
@@ -541,7 +655,6 @@ fun SongListItem(
             .padding(8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        // Madde 10: Seçim modunda albüm art üzerinde oynatma butonu
         Box(modifier = Modifier.size(50.dp)) {
             SongAlbumArt(song = song, modifier = Modifier.fillMaxSize())
             if (isSelectionMode) {
@@ -562,7 +675,6 @@ fun SongListItem(
                     )
                 }
             }
-            // Seçildiğinde vurgu (mevcut davranış korunuyor)
             if (isSelected) {
                 Box(
                     modifier = Modifier
@@ -600,6 +712,13 @@ fun SongListItem(
                     expanded = showDropdown,
                     onDismissRequest = { showDropdown = false }
                 ) {
+                    if (onRemoveFromPlaylist != null) {
+                        DropdownMenuItem(
+                            text = { Text(stringResource(R.string.remove_from_playlist)) },
+                            onClick = { showDropdown = false; onRemoveFromPlaylist() },
+                            leadingIcon = { Icon(Icons.Default.RemoveCircleOutline, contentDescription = null, tint = MaterialTheme.colorScheme.error) }
+                        )
+                    }
                     DropdownMenuItem(
                         text = { Text(stringResource(R.string.add_to_playlist)) },
                         onClick = { showDropdown = false; onAddToPlaylist() },
@@ -810,18 +929,9 @@ fun FullPlayerScreen(viewModel: MusicViewModel, song: Song, isPlaying: Boolean, 
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                 IconButton(onClick = onCollapse) { Icon(Icons.Default.KeyboardArrowDown, contentDescription = null) }
                 Text(stringResource(R.string.playing_now), style = MaterialTheme.typography.titleMedium)
-                // Madde 6: ⁝ butonundan düzenleme menüsü
-                Box {
-                    IconButton(onClick = { showMenu = true }) { Icon(Icons.Default.MoreVert, contentDescription = null) }
-                    DropdownMenu(
-                        expanded = showMenu,
-                        onDismissRequest = { showMenu = false }
-                    ) {
-                        DropdownMenuItem(
-                            text = { Text(stringResource(R.string.edit_song_info)) },
-                            onClick = { showMenu = false; showEditDialog = true },
-                            leadingIcon = { Icon(Icons.Default.Edit, contentDescription = null) }
-                        )
+                Row {
+                    IconButton(onClick = { showEditDialog = true }) {
+                        Icon(Icons.Default.Edit, contentDescription = stringResource(R.string.edit_song_info))
                     }
                 }
             }
@@ -873,7 +983,6 @@ fun FullPlayerScreen(viewModel: MusicViewModel, song: Song, isPlaying: Boolean, 
             Text(song.title, style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
             Text(song.artistName, style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.primary)
 
-            // Madde 14: Sonraki şarkı bilgisi
             nextSong?.let { next ->
                 Text(
                     stringResource(R.string.next_song_label, next.title),

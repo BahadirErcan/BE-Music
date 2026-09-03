@@ -238,4 +238,15 @@
     <string name="invert_playlist">Invertir Playlist</string>
     <string name="invert_playlist_confirm">Se eliminarán las %1$d canciones de esta playlist y se añadirán las %2$d canciones que no están. Esta acción no se puede deshacer</string>
     <string name="invert">Invertir</string>
+    <string name="menu_options">Menú</string>
+    <string name="remove_selected">¿Desea eliminar %1$d canciones?</string>
+    <string name="create_playlist_btn">Crear playlist</string>
+    <string name="selection_mode">Modo selección</string>
+    <string name="remove_mode">Eliminar</string>
+    <string name="history">Historial</string>
+    <string name="clear_history">Borrar historial</string>
+    <string name="clear_history_confirm">¿Desea borrar el historial?</string>
+    <string name="no_history">Sin historial</string>
+    <string name="skip_silence">Omitir silencio</string>
+    <string name="skip_silence_description">Omitir automáticamente las partes silenciosas durante la reproducción</string>
 </resources>

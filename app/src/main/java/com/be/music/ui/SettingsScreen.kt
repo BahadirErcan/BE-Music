@@ -611,6 +611,33 @@ fun SettingsScreen(
                 }
             }
 
+            // Skip Silence Section
+            item {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)
+                    )
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(text = stringResource(R.string.skip_silence), style = MaterialTheme.typography.bodyLarge)
+                            Text(text = stringResource(R.string.skip_silence_description), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                        Switch(
+                            checked = settings.skipSilenceEnabled,
+                            onCheckedChange = { viewModel.updateFilterSettings(settings.copy(skipSilenceEnabled = it)) }
+                        )
+                    }
+                }
+            }
+
             // Download Options Section
             item {
                 Card(

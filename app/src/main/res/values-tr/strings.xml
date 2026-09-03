@@ -111,6 +111,15 @@
     <string name="export_failed">Dışa aktarma başarısız</string>
     <string name="remove">Kaldır</string>
     <string name="search_hint">Şarkı adı</string>
+    <string name="menu_options">Menü</string>
+    <string name="remove_selected">%1$d kaldırmak istiyormusunuz?</string>
+    <string name="create_playlist_btn">Playlist Oluştur</string>
+    <string name="selection_mode">Seçim Modu</string>
+    <string name="remove_mode">Kaldır</string>
+    <string name="history">Geçmiş</string>
+    <string name="clear_history">Geçmişi Temizle</string>
+    <string name="clear_history_confirm">Geçmişi temizlemek istediğinize emin misiniz?</string>
+    <string name="no_history">Geçmiş boş</string>
 
     <!-- İndirme Ekranı -->
     <string name="download_screen_title">Şarkı İndirme</string>
@@ -238,6 +247,8 @@
     <string name="current_position_prefix">Örnek</string>
     <string name="multi_song_playlist">Tek Listede Birden Fazla Şarkı</string>
     <string name="multi_song_playlist_desc">İndirilen tüm şarkıları tek bir listede topla</string>
+    <string name="remove_from_playlist">Listeden Kaldır</string>
+    <string name="remove_from_playlist_confirm">\"%1$s\" bu listeden kaldırılsın mı?</string>
     <string name="invert_playlist">Oynatma Listesini Ters Çevir</string>
     <string name="invert_playlist_confirm">Bu listedeki %1$d şarkı çıkarılıp yerine listede olmayan %2$d şarkı eklenecek. Bu işlem geri alınamaz</string>
     <string name="invert">Ters Çevir</string>
@@ -253,4 +264,6 @@
     <string name="update_mandatory">Bu güncelleme zorunludur</string>
     <string name="update_error">Güncellemeler kontrol edilemedi</string>
     <string name="update_retry">Tekrar Dene</string>
+    <string name="skip_silence">Sessiz Bölümü Atla</string>
+    <string name="skip_silence_description">Oynatma sırasında sessiz bölümleri otomatik olarak atla</string>
 </resources>

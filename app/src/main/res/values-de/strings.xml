@@ -238,4 +238,15 @@
     <string name="invert_playlist">Playlist umkehren</string>
     <string name="invert_playlist_confirm">Die %1$d Songs dieser Playlist werden entfernt und die %2$d nicht enthaltenen Songs werden hinzugefügt. Diese Aktion kann nicht rückgängig gemacht werden</string>
     <string name="invert">Umkehren</string>
+    <string name="menu_options">Menü</string>
+    <string name="remove_selected">Möchten Sie %1$d Lieder entfernen?</string>
+    <string name="create_playlist_btn">Playlist erstellen</string>
+    <string name="selection_mode">Auswahlmodus</string>
+    <string name="remove_mode">Entfernen</string>
+    <string name="history">Verlauf</string>
+    <string name="clear_history">Verlauf löschen</string>
+    <string name="clear_history_confirm">Möchten Sie den Verlauf wirklich löschen?</string>
+    <string name="no_history">Kein Verlauf</string>
+    <string name="skip_silence">Stille überspringen</string>
+    <string name="skip_silence_description">Stille Abschnitte beim Abspielen automatisch überspringen</string>
 </resources>

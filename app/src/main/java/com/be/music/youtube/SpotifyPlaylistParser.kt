@@ -334,4 +334,63 @@ object SpotifyPlaylistParser {
             .unescapeHtml()
             .trim()
     }
+
+    /**
+     * Spotify playlist URL'inden playlist adini ceker.
+     */
+    suspend fun fetchPlaylistName(url: String): String? = withContext(Dispatchers.IO) {
+        val playlistId = extractPlaylistId(url) ?: return@withContext null
+        try {
+            val embedUrl = "https://open.spotify.com/embed/playlist/$playlistId"
+            val request = Request.Builder()
+                .url(embedUrl)
+                .header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36")
+                .build()
+            val response = client.newCall(request).execute()
+            val body = response.body?.string() ?: ""
+            response.close()
+            // __NEXT_DATA__ icinde playlist name'i bul
+            val nextDataRegex = Regex("""<script\s+id="__NEXT_DATA__"[^>]*>(.*?)</script>""", RegexOption.DOT_MATCHES_ALL)
+            val match = nextDataRegex.find(body) ?: return@withContext null
+            val json = kotlinx.serialization.json.Json { ignoreUnknownKeys = true }
+            val element = json.parseToJsonElement(match.groupValues[1])
+            findPlaylistNameInJson(element)
+        } catch (e: Exception) {
+            null
+        }
+    }
+
+    private fun findPlaylistNameInJson(element: kotlinx.serialization.json.JsonElement): String? {
+        when (element) {
+            is kotlinx.serialization.json.JsonObject -> {
+                val name = element["name"]?.let {
+                    if (it is kotlinx.serialization.json.JsonPrimitive) it.content else null
+                }
+                val type = element["type"]?.let {
+                    if (it is kotlinx.serialization.json.JsonPrimitive) it.content else null
+                }
+                if (name != null && type == "playlist") return name
+                element["playlist"]?.let {
+                    if (it is kotlinx.serialization.json.JsonObject) {
+                        val innerName = it["name"]?.let { n ->
+                            if (n is kotlinx.serialization.json.JsonPrimitive) n.content else null
+                        }
+                        if (innerName != null) return innerName
+                    }
+                }
+                element.values.forEach { value ->
+                    val result = findPlaylistNameInJson(value)
+                    if (result != null) return result
+                }
+            }
+            is kotlinx.serialization.json.JsonArray -> {
+                element.forEach { item ->
+                    val result = findPlaylistNameInJson(item)
+                    if (result != null) return result
+                }
+            }
+            else -> {}
+        }
+        return null
+    }
 }

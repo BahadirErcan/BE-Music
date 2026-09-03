@@ -298,6 +298,10 @@ class DownloadWorker(
             val currentTime = System.currentTimeMillis()
             for (file in files) {
                 if (currentTime - file.lastModified() < 30000) {
+                    // Album metadata'sini duzelt (tekli indirme, playlist yok)
+                    if (file.extension.lowercase() in listOf("mp3", "m4a", "aac", "mp4", "flac", "ogg", "opus")) {
+                        AlbumMetadataHelper.fixAlbumMetadata(file.absolutePath, playlistName = null)
+                    }
                     android.media.MediaScannerConnection.scanFile(
                         appContext, arrayOf(file.absolutePath), null
                     ) { path, uri ->

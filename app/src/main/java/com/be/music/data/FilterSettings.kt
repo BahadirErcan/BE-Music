@@ -20,5 +20,6 @@ data class FilterSettings(
     val parallelDownloadCount: Int = 3,
     val autoPlaylistName: String = "List",
     val autoPlaylistNumberPosition: String = "SUFFIX", // PREFIX, SUFFIX
-    val autoPlaylistMultiSong: Boolean = true // true: çoklu şarkıyı tek playlist'te topla
+    val autoPlaylistMultiSong: Boolean = true, // true: çoklu şarkıyı tek playlist'te topla
+    val skipSilenceEnabled: Boolean = false // true: şarkılardaki sessiz yerleri otomatik atla
 )

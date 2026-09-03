@@ -238,4 +238,15 @@
     <string name="invert_playlist">Инвертировать плейлист</string>
     <string name="invert_playlist_confirm">%1$d песен этого плейлиста будут удалены и добавлены %2$d песен, которых в нём нет. Это действие необратимо</string>
     <string name="invert">Инвертировать</string>
+    <string name="menu_options">Меню</string>
+    <string name="remove_selected">Вы хотите удалить %1$d песен?</string>
+    <string name="create_playlist_btn">Создать плейлист</string>
+    <string name="selection_mode">Режим выбора</string>
+    <string name="remove_mode">Удалить</string>
+    <string name="history">История</string>
+    <string name="clear_history">Очистить историю</string>
+    <string name="clear_history_confirm">Вы уверены, что хотите очистить историю?</string>
+    <string name="no_history">История пуста</string>
+    <string name="skip_silence">Пропускать тишину</string>
+    <string name="skip_silence_description">Автоматически пропускать тихие части при воспроизведении</string>
 </resources>

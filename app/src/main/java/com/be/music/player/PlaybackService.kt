@@ -3,6 +3,8 @@ package com.be.music.player
 import android.app.PendingIntent
 import android.content.Intent
 import android.os.Build
+import android.os.Handler
+import android.os.Looper
 import androidx.annotation.OptIn
 import androidx.media3.common.AudioAttributes
 import androidx.media3.common.C
@@ -11,13 +13,24 @@ import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.session.MediaSession
 import androidx.media3.session.MediaSessionService
 import com.be.music.MainActivity
+import com.be.music.data.AppDatabase
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
 
 class PlaybackService : MediaSessionService() {
     private var mediaSession: MediaSession? = null
+    private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    private val mainHandler = Handler(Looper.getMainLooper())
 
     @OptIn(UnstableApi::class)
     override fun onCreate() {
         super.onCreate()
+
+        val db = AppDatabase.getDatabase(this)
+        val settings = db.filterSettingsDao().getSettings()
+
         val player = ExoPlayer.Builder(this)
             .setAudioAttributes(
                 AudioAttributes.Builder()
@@ -26,10 +39,17 @@ class PlaybackService : MediaSessionService() {
                     .build(),
                 true
             )
-            .setHandleAudioBecomingNoisy(true) // Kulaklık çıkınca duraklat
+            .setHandleAudioBecomingNoisy(true)
             .build()
 
-        // Madde 5: Bildirime tıklandığında MainActivity'ye yönlendir
+        serviceScope.launch {
+            settings.collect { currentSettings ->
+                mainHandler.post {
+                    player.setSkipSilenceEnabled(currentSettings?.skipSilenceEnabled == true)
+                }
+            }
+        }
+
         val sessionActivityIntent = PendingIntent.getActivity(
             this,
             0,
@@ -44,7 +64,7 @@ class PlaybackService : MediaSessionService() {
         )
 
         mediaSession = MediaSession.Builder(this, player)
-            .setSessionActivity(sessionActivityIntent) // Madde 2 & 5
+            .setSessionActivity(sessionActivityIntent)
             .build()
     }
 

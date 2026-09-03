@@ -237,4 +237,15 @@
     <string name="invert_playlist">প্লেলিস্ট উল্টান</string>
     <string name="invert_playlist_confirm">এই প্লেলিস্টের %1$dটি গান সরিয়ে এতে নেই এমন %2$dটি গান যোগ করা হবে। এই কাজটি ফিরিয়ে আনা যাবে না।</string>
     <string name="invert">উল্টান</string>
+    <string name="menu_options">মেনু</string>
+    <string name="remove_selected">আপনি কি %1$d গান মুছে ফেলতে চান?</string>
+    <string name="create_playlist_btn">প্লেলিস্ট তৈরি করুন</string>
+    <string name="selection_mode">নির্বাচন মোড</string>
+    <string name="remove_mode">সরান</string>
+    <string name="history">ইতিহাস</string>
+    <string name="clear_history">ইতিহাস মুছুন</string>
+    <string name="clear_history_confirm">আপনি কি ইতিহাস মুছে ফেলতে চান?</string>
+    <string name="no_history">কোনো ইতিহাস নেই</string>
+    <string name="skip_silence">নীরবতা বাদ দিন</string>
+    <string name="skip_silence_description">চলাকালে নীরব অংশ স্বয়ংক্রিয়ভাবে বাদ দিন</string>
 </resources>

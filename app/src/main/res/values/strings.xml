@@ -111,6 +111,15 @@
     <string name="export_failed">Export failed</string>
     <string name="remove">Remove</string>
     <string name="search_hint">Song name</string>
+    <string name="menu_options">Menu</string>
+    <string name="remove_selected">Do you want to remove %1$d songs?</string>
+    <string name="create_playlist_btn">Create Playlist</string>
+    <string name="selection_mode">Selection Mode</string>
+    <string name="remove_mode">Remove</string>
+    <string name="history">History</string>
+    <string name="clear_history">Clear History</string>
+    <string name="clear_history_confirm">Are you sure you want to clear history?</string>
+    <string name="no_history">No history</string>
 
     <!-- Download Screen -->
     <string name="download_screen_title">Song Download</string>
@@ -231,7 +240,7 @@
     <string name="lang_fr">French</string>
     <string name="lang_zh">Chinese</string>
     <string name="lang_ru">Russian</string>
-    <string name="premium_feature_auto_playlist_name_edit">Auto playlist name edit</string>
+    <string name="premium_feature_auto_playlist_name_edit" translatable="false">Auto playlist name edit</string>
     <string name="premium_feature_auto_playlist_name_edit_desc" translatable="false">editing auto playlist name from download list</string>
     <string name="premium_feature_auto_playlist">Auto Playlist Creation</string>
     <string name="premium_feature_auto_playlist_desc">Downloaded songs from the list are automatically combined into a playlist</string>
@@ -242,19 +251,23 @@
     <string name="current_position_prefix">Example</string>
     <string name="multi_song_playlist">Multiple Songs in One Playlist</string>
     <string name="multi_song_playlist_desc">Combine all downloaded songs into a single playlist</string>
+    <string name="remove_from_playlist" translatable="false">Remove from Playlist</string>
+    <string name="remove_from_playlist_confirm" translatable="false">Remove \"%1$s\" from this playlist?</string>
     <string name="invert_playlist">Invert Playlist</string>
     <string name="invert_playlist_confirm">Remove the %1$d songs in this playlist and add the %2$d songs that are not in it. This action cannot be undone</string>
     <string name="invert">Invert</string>
 
     <!-- Update Check -->
-    <string name="check_updates">Check for Updates</string>
-    <string name="checking_for_updates">Checking for updates…</string>
-    <string name="up_to_date">You are using the latest version</string>
-    <string name="update_available">New update available</string>
-    <string name="update_version">Version: %1$s</string>
-    <string name="update_changelog">What\'s new</string>
-    <string name="update_download">Download</string>
-    <string name="update_mandatory">This update is required</string>
-    <string name="update_error">Could not check for updates</string>
-    <string name="update_retry">Try Again</string>
+    <string name="check_updates" translatable="false">Check for Updates</string>
+    <string name="checking_for_updates" translatable="false">Checking for updates…</string>
+    <string name="up_to_date" translatable="false">You are using the latest version</string>
+    <string name="update_available" translatable="false">New update available</string>
+    <string name="update_version" translatable="false">Version: %1$s</string>
+    <string name="update_changelog" translatable="false">What\'s new</string>
+    <string name="update_download" translatable="false">Download</string>
+    <string name="update_mandatory" translatable="false">This update is required</string>
+    <string name="update_error" translatable="false">Could not check for updates</string>
+    <string name="update_retry" translatable="false">Try Again</string>
+    <string name="skip_silence">Skip Silence</string>
+    <string name="skip_silence_description">Automatically skip silent parts during playback</string>
 </resources>
