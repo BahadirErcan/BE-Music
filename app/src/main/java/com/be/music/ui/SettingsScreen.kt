@@ -1077,6 +1077,8 @@ fun SettingsScreen(
                     }
                 }
 
+                /*
+
                 Card(
                     modifier = Modifier.fillMaxWidth(),
                     colors = CardDefaults.cardColors(
@@ -1246,7 +1248,7 @@ fun SettingsScreen(
                             }
                         }
                     }
-                }
+                }*/
             }
 
             item {
