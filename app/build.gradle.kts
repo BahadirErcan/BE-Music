@@ -20,8 +20,8 @@ android {
         applicationId = "com.be.music"
         minSdk = 26
         targetSdk = 35
-        versionCode = 12
-        versionName = "1.7.0"
+        versionCode = 13
+        versionName = "1.7.1"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
         ndk {
@@ -48,7 +48,7 @@ android {
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
             // Fallback to debug signing if release keystore is missing
             signingConfig = signingConfigs.findByName("release") ?: signingConfigs.getByName("debug")
-            versionNameSuffix = "1"
+            versionNameSuffix = ""
         }
     }
     

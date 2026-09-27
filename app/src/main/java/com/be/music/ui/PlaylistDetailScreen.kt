@@ -19,6 +19,12 @@ import com.be.music.R
 
 private enum class PlaylistSort { ALPHA, DURATION, ADDED }
 
+private fun String?.toPlaylistSort(): PlaylistSort = when (this) {
+    "DURATION" -> PlaylistSort.DURATION
+    "ALPHA" -> PlaylistSort.ALPHA
+    else -> PlaylistSort.ADDED
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PlaylistDetailScreen(
@@ -43,8 +49,6 @@ fun PlaylistDetailScreen(
     var showInvertConfirm by remember { mutableStateOf(false) }
     var showPlaylistCreateDialog by remember { mutableStateOf(false) }
     var showRemoveDialog by remember { mutableStateOf(false) }
-    var sortMode by remember { mutableStateOf(PlaylistSort.ALPHA) }
-    var sortReverse by remember { mutableStateOf(false) }
 
     BackHandler(enabled = showFullPlayer || isSelectionMode) {
         when {
@@ -55,13 +59,37 @@ fun PlaylistDetailScreen(
 
     val playlist = remember(playlists, playlistId) { playlists.find { it.id == playlistId } }
 
+    var sortMode by remember(playlist?.id) { mutableStateOf(PlaylistSort.ADDED) }
+    var sortReverse by remember(playlist?.id) { mutableStateOf(false) }
+
+    LaunchedEffect(playlist?.id) {
+        val p = playlist
+        if (p != null) {
+            sortMode = p.sortMode.toPlaylistSort()
+            sortReverse = p.sortReverse
+        }
+    }
+
+    fun savePlaylistSort() {
+        val p = playlist ?: return
+        viewModel.updatePlaylist(p.copy(sortMode = sortMode.name, sortReverse = sortReverse))
+    }
+
+    fun setPlaylistSort(mode: PlaylistSort) {
+        sortMode = mode
+        savePlaylistSort()
+    }
+
     val initialPlaylistSongs = remember(playlist, songs) { playlist?.songIds?.mapNotNull { id -> songs.find { it.id == id } } ?: emptyList() }
 
-    val sortedPlaylistSongs = remember(initialPlaylistSongs, sortMode, sortReverse) {
+    val sortedPlaylistSongs = remember(initialPlaylistSongs, sortMode, sortReverse, playlist) {
         val sorted = when (sortMode) {
             PlaylistSort.ALPHA -> initialPlaylistSongs.sortedBy { it.title.lowercase() }
             PlaylistSort.DURATION -> initialPlaylistSongs.sortedBy { it.duration }
-            PlaylistSort.ADDED -> initialPlaylistSongs.sortedBy { it.dateModified }
+            PlaylistSort.ADDED -> {
+                val orderById = playlist?.songIds?.withIndex()?.associate { (i, id) -> id to i } ?: emptyMap()
+                initialPlaylistSongs.sortedByDescending { orderById[it.id] ?: -1 }
+            }
         }
         if (sortReverse) sorted.reversed() else sorted
     }
@@ -164,11 +192,11 @@ fun PlaylistDetailScreen(
                     }
                     IconButton(onClick = { showSortMenu = true }) { Icon(Icons.AutoMirrored.Filled.Sort, contentDescription = stringResource(R.string.sort)) }
                     DropdownMenu(expanded = showSortMenu, onDismissRequest = { showSortMenu = false }) {
-                        DropdownMenuItem(text = { Text(stringResource(R.string.alphabetical)) }, onClick = { showSortMenu = false; sortMode = PlaylistSort.ALPHA })
-                        DropdownMenuItem(text = { Text(stringResource(R.string.song_duration)) }, onClick = { showSortMenu = false; sortMode = PlaylistSort.DURATION })
-                        DropdownMenuItem(text = { Text(stringResource(R.string.date_added)) }, onClick = { showSortMenu = false; sortMode = PlaylistSort.ADDED })
+                        DropdownMenuItem(text = { Text(stringResource(R.string.alphabetical)) }, onClick = { showSortMenu = false; setPlaylistSort(PlaylistSort.ALPHA) })
+                        DropdownMenuItem(text = { Text(stringResource(R.string.song_duration)) }, onClick = { showSortMenu = false; setPlaylistSort(PlaylistSort.DURATION) })
+                        DropdownMenuItem(text = { Text(stringResource(R.string.date_added)) }, onClick = { showSortMenu = false; setPlaylistSort(PlaylistSort.ADDED) })
                         HorizontalDivider()
-                        DropdownMenuItem(text = { Text(if (!sortReverse) stringResource(R.string.ascending) else stringResource(R.string.descending)) }, onClick = { sortReverse = !sortReverse; showSortMenu = false })
+                        DropdownMenuItem(text = { Text(if (!sortReverse) stringResource(R.string.ascending) else stringResource(R.string.descending)) }, onClick = { sortReverse = !sortReverse; savePlaylistSort(); showSortMenu = false })
                     }
 
                 }

@@ -33,7 +33,7 @@ class YoutubeSearcher {
                         title = item.name ?: "Unknown",
                         author = item.uploaderName ?: "Unknown",
                         thumbnailUrl = item.thumbnails?.firstOrNull()?.url ?: "",
-                        duration = item.duration.toString()
+                        durationSeconds = item.duration
                     )
                 }
                 .filter { it.id.isNotEmpty() }

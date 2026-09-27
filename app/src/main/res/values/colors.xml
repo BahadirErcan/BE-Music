@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="notification_now_playing_background">#FF101114</color>
+    <color name="notification_now_playing_title">#FFFFFFFF</color>
+    <color name="notification_now_playing_subtitle">#CCFFFFFF</color>
+    <color name="notification_now_playing_shadow">#B3000000</color>
+</resources>

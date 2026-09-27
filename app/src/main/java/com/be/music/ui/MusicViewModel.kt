@@ -55,10 +55,10 @@ class MusicViewModel @Inject constructor(
     private val _selectedTab = MutableStateFlow(0)
     val selectedTab = _selectedTab.asStateFlow()
 
-    private val _sortOrder = MutableStateFlow(SortOrder.NAME)
+    private val _sortOrder = MutableStateFlow(SortOrder.DATE)
     val sortOrder = _sortOrder.asStateFlow()
 
-    private val _sortReverse = MutableStateFlow(true)
+    private val _sortReverse = MutableStateFlow(false)
     val sortReverse = _sortReverse.asStateFlow()
 
     private val _searchQuery = MutableStateFlow("")
@@ -187,6 +187,15 @@ class MusicViewModel @Inject constructor(
     val currentLyrics = _currentLyrics.asStateFlow()
 
     init {
+        viewModelScope.launch {
+            val settings = repository.filterSettings.first()
+            _sortOrder.value = when (settings.songSortOrder) {
+                "DATE" -> SortOrder.DATE
+                "DURATION" -> SortOrder.DURATION
+                else -> SortOrder.NAME
+            }
+            _sortReverse.value = settings.songSortReverse
+        }
         initializeController()
     }
 
@@ -465,10 +474,26 @@ class MusicViewModel @Inject constructor(
 
     fun setSortOrder(order: SortOrder) {
         _sortOrder.value = order
+        viewModelScope.launch {
+            val current = repository.filterSettings.first()
+            repository.saveFilterSettings(
+                current.copy(
+                    songSortOrder = when (order) {
+                        SortOrder.NAME -> "NAME"
+                        SortOrder.DATE -> "DATE"
+                        SortOrder.DURATION -> "DURATION"
+                    }
+                )
+            )
+        }
     }
 
     fun toggleSortReverse() {
         _sortReverse.value = !_sortReverse.value
+        viewModelScope.launch {
+            val current = repository.filterSettings.first()
+            repository.saveFilterSettings(current.copy(songSortReverse = _sortReverse.value))
+        }
     }
 
     // Youtube/search/download functionality removed

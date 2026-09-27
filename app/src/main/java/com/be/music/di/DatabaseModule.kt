@@ -33,4 +33,7 @@ object DatabaseModule {
 
     @Provides
     fun provideFilterSettingsDao(database: AppDatabase): FilterSettingsDao = database.filterSettingsDao()
+
+    @Provides
+    fun provideSongOverrideDao(database: AppDatabase): SongOverrideDao = database.songOverrideDao()
 }

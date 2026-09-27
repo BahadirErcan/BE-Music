@@ -16,22 +16,17 @@ class MusicRepositoryTest {
     private val albumDao: AlbumDao = mockk()
     private val playlistDao: PlaylistDao = mockk()
     private val filterSettingsDao: FilterSettingsDao = mockk()
+    private val songOverrideDao: SongOverrideDao = mockk()
     private val context: android.content.Context = mockk()
     private val playHistoryManager: PlayHistoryManager = mockk()
 
-    private lateinit var repository: MusicRepository
-
     @Before
     fun setup() {
-        repository = MusicRepository(
-            context,
-            songDao,
-            artistDao,
-            albumDao,
-            playlistDao,
-            filterSettingsDao,
-            playHistoryManager
-        )
+        every { songDao.getAllSongs() } returns flowOf(emptyList())
+        every { artistDao.getAllArtists() } returns flowOf(emptyList())
+        every { albumDao.getAllAlbums() } returns flowOf(emptyList())
+        every { playlistDao.getAllPlaylists() } returns flowOf(emptyList())
+        every { filterSettingsDao.getSettings() } returns flowOf(FilterSettings())
     }
 
     @Test
@@ -43,8 +38,19 @@ class MusicRepositoryTest {
         every { songDao.getAllSongs() } returns flowOf(mockSongs)
 
         // When
+        val repository = MusicRepository(
+            context,
+            songDao,
+            artistDao,
+            albumDao,
+            playlistDao,
+            filterSettingsDao,
+            songOverrideDao,
+            playHistoryManager
+        )
+
+        // Then
         repository.allSongs.collect { songs ->
-            // Then
             assertEquals(1, songs.size)
             assertEquals("Title", songs[0].title)
         }

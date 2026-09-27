@@ -550,7 +550,7 @@ fun PlaylistsTab(
                                     Text(playlist.name, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                                     val totalMs = playlist.songIds.mapNotNull { id -> songs.firstOrNull { it.id == id }?.duration ?: 0L }.sum()
                                     Text(
-                                        "${stringResource(R.string.songs_count, playlist.songIds.size)} • ${formatTime(totalMs)}",
+                                        "${stringResource(R.string.songs_count, playlist.songIds.size)} • ${formatDuration(totalMs)}",
                                         style = MaterialTheme.typography.bodySmall
                                     )
                                 }
@@ -997,8 +997,8 @@ fun FullPlayerScreen(viewModel: MusicViewModel, song: Song, isPlaying: Boolean, 
             Spacer(modifier = Modifier.height(8.dp))
             Slider(value = if (duration > 0) position.toFloat() else 0f, onValueChange = { viewModel.seekTo(it.toLong()) }, valueRange = 0f..(duration.toFloat().coerceAtLeast(1f)), modifier = Modifier.fillMaxWidth())
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                Text(formatTime(position))
-                Text(formatTime(duration))
+                Text(formatDuration(position))
+                Text(formatDuration(duration))
             }
             Spacer(modifier = Modifier.height(24.dp))
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly, verticalAlignment = Alignment.CenterVertically) {
@@ -1066,13 +1066,6 @@ fun FullPlayerScreen(viewModel: MusicViewModel, song: Song, isPlaying: Boolean, 
             dismissButton = { TextButton(onClick = { showEditDialog = false }) { Text(stringResource(R.string.cancel)) } }
         )
     }
-}
-
-fun formatTime(ms: Long): String {
-    val totalSeconds = ms / 1000
-    val minutes = totalSeconds / 60
-    val seconds = totalSeconds % 60
-    return "%02d:%02d".format(minutes, seconds)
 }
 
 @Composable

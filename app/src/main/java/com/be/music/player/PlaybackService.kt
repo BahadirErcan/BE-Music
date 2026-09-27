@@ -21,12 +21,18 @@ import kotlinx.coroutines.launch
 
 class PlaybackService : MediaSessionService() {
     private var mediaSession: MediaSession? = null
+    private var notificationProvider: NowPlayingNotificationProvider? = null
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val mainHandler = Handler(Looper.getMainLooper())
 
     @OptIn(UnstableApi::class)
     override fun onCreate() {
         super.onCreate()
+
+        // Bildirimin arka planı albüm kapağı olan özel "şu an çalınıyor" görünümü.
+        notificationProvider = NowPlayingNotificationProvider(this).also {
+            setMediaNotificationProvider(it)
+        }
 
         val db = AppDatabase.getDatabase(this)
         val settings = db.filterSettingsDao().getSettings()
@@ -101,6 +107,8 @@ class PlaybackService : MediaSessionService() {
     }
 
     override fun onDestroy() {
+        notificationProvider?.release()
+        notificationProvider = null
         mediaSession?.run {
             player.release()
             release()

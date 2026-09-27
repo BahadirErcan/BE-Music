@@ -3,6 +3,8 @@ package com.be.music.data
 import android.content.ContentUris
 import android.content.Context
 import android.net.Uri
+import android.os.Build
+import android.os.Environment
 import android.provider.MediaStore
 import android.util.Log
 import kotlinx.coroutines.Dispatchers
@@ -28,6 +30,7 @@ class MusicRepository @Inject constructor(
     private val albumDao: AlbumDao,
     private val playlistDao: PlaylistDao,
     private val filterSettingsDao: FilterSettingsDao,
+    private val songOverrideDao: SongOverrideDao,
     val playHistoryManager: PlayHistoryManager
 ) {
     val allSongs: Flow<List<Song>> = songDao.getAllSongs()
@@ -91,6 +94,10 @@ class MusicRepository @Inject constructor(
         val artistsSet = mutableSetOf<String>()
         val albumsMap = mutableMapOf<String, String>() // AlbumName to ArtistName
 
+        // Kullanıcının düzenlediği şarkıların değerleri taramayı ezmeyecek şekilde
+        // MediaStore satırlarına uygulanır (MediaStore güncellenemese bile düzenleme kalıcı kalır).
+        val overrides = songOverrideDao.getAllOnce().associateBy { it.songId }
+
         try {
             context.contentResolver.query(uri, projection, selection, null, sortOrder)?.use { c ->
                 val idCol = c.getColumnIndexOrThrow(MediaStore.Audio.Media._ID)
@@ -111,21 +118,28 @@ class MusicRepository @Inject constructor(
                     val dateModified = c.getLong(dateCol)
                     val songUri = ContentUris.withAppendedId(MediaStore.Audio.Media.EXTERNAL_CONTENT_URI, id)
 
+                    val override = overrides[id]
+                    val effectiveTitle = override?.title ?: title
+                    val effectiveArtist = override?.artist ?: artist
+                    val effectiveAlbum = override?.album ?: album
+                    val effectivePath = override?.path ?: path
+                    val effectiveDateModified = if (override != null && override.dateModified > 0L) override.dateModified else dateModified
+
                     songsList.add(
                         Song(
                             id = id,
-                            title = title,
-                            artistName = artist,
-                            albumName = album,
+                            title = effectiveTitle,
+                            artistName = effectiveArtist,
+                            albumName = effectiveAlbum,
                             duration = duration,
-                            path = path,
+                            path = effectivePath,
                             uriString = songUri.toString(),
-                            dateModified = dateModified,
-                            lyricsPath = findLyricsPathForSong(path)
+                            dateModified = effectiveDateModified,
+                            lyricsPath = findLyricsPathForSong(effectivePath)
                         )
                     )
-                    artistsSet.add(artist)
-                    albumsMap[album] = artist
+                    artistsSet.add(effectiveArtist)
+                    albumsMap[effectiveAlbum] = effectiveArtist
                 }
             }
 
@@ -305,67 +319,120 @@ class MusicRepository @Inject constructor(
     }
 
     suspend fun updateSongMetadata(song: Song, newTitle: String, newArtist: String, newAlbum: String) = withContext(Dispatchers.IO) {
+        val oldFile = File(song.path)
+        var currentPath = song.path
+        var currentLyricsPath = song.lyricsPath
+
+        // Düzenleme tarihi sıralamasını bozmasın diye orijinal mtime korunur.
+        // (song.dateModified = MediaStore DATE_MODIFIED, saniye cinsinden)
+        val originalMtimeMillis = if (song.dateModified > 0L) song.dateModified * 1000L else oldFile.lastModified()
+
+        // 0. Dosyanın gerçek metadata'sını kalıcı olarak güncelle (jaudiotagger).
+        // Rename'den ÖNCE yapılır ki dosya her zaman erişilebilir olsun ve etiketler beraber taşınsın.
+        // commit() dosyayı yeniden yazdığı için mtime'ı değiştirir; işlem sonrası eski tarih geri yüklenir.
         try {
-            val oldFile = File(song.path)
-            var currentPath = song.path
-            var currentLyricsPath = song.lyricsPath
+            writeAudioMetadata(oldFile, newTitle, newArtist, newAlbum)
+            if (originalMtimeMillis > 0L) oldFile.setLastModified(originalMtimeMillis)
+            Log.d("MusicRepository", "Dosya metadata'si kalici olarak guncellendi: ${oldFile.absolutePath}")
+        } catch (e: Exception) {
+            Log.e("MusicRepository", "Dosya metadata yazma hatasi", e)
+        }
 
-            // Physical rename if old file exists and new name differs
-            val parentDir = oldFile.parentFile
-            if (parentDir != null && oldFile.exists()) {
-                val extension = oldFile.extension
-                val sanitizedTitle = newTitle.replace("[\\\\/:*?\"<>|]".toRegex(), "_")
-                val newFile = File(parentDir, "$sanitizedTitle.$extension")
-                if (newFile.absolutePath != oldFile.absolutePath && !newFile.exists()) {
-                    if (oldFile.renameTo(newFile)) {
-                        currentPath = newFile.absolutePath
+        val parentDir = oldFile.parentFile
+        val extension = oldFile.extension
+        val sanitizedTitle = newTitle.replace("[\\\\/:*?\"<>|]".toRegex(), "_")
+        val newFileName = "$sanitizedTitle.$extension"
+        val newFile = parentDir?.let { File(it, newFileName) }
+        val shouldRename = newFile != null && newFile.absolutePath != oldFile.absolutePath && !newFile.exists()
 
-                        // Rename associated lyrics file if exists
-                        song.lyricsPath?.let { oldLyricsPathStr ->
-                            val oldLyricsFile = File(oldLyricsPathStr)
-                            if (oldLyricsFile.exists()) {
-                                val lyricsExt = oldLyricsFile.extension
-                                val newLyricsFile = File(parentDir, "$sanitizedTitle.$lyricsExt")
-                                if (oldLyricsFile.renameTo(newLyricsFile)) {
-                                    currentLyricsPath = newLyricsFile.absolutePath
-                                }
-                            }
+        // 1. MediaStore güncelle.
+        // API 29+: DATA sütunu update ile yazılamaz (provider tüm güncellemeyi reddeder).
+        // Bu yüzden DATA yerine DISPLAY_NAME + RELATIVE_PATH kullanılır; provider dosyayı
+        // kendisi taşır, aynı _ID korunur ve DATA sütunu da güncellenir.
+        // API 28 ve öncesi: mevcut DATA yaklaşımı çalışır.
+        val values = android.content.ContentValues().apply {
+            put(MediaStore.Audio.Media.TITLE, newTitle)
+            put(MediaStore.Audio.Media.ARTIST, newArtist)
+            put(MediaStore.Audio.Media.ALBUM, newAlbum)
+            if (shouldRename) {
+                val nf = newFile!!
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                    val relativePath = try {
+                        val root = File(Environment.getExternalStorageDirectory().absolutePath)
+                        val rel = root.toURI().relativize(parentDir!!.toURI()).path
+                        if (rel.startsWith("..") || rel.contains("../")) null else rel
+                    } catch (e: Exception) {
+                        null
+                    }
+                    if (relativePath != null) {
+                        put(MediaStore.MediaColumns.DISPLAY_NAME, newFileName)
+                        put(MediaStore.MediaColumns.RELATIVE_PATH, relativePath)
+                    }
+                } else {
+                    put(MediaStore.Audio.Media.DATA, nf.absolutePath)
+                }
+            }
+        }
+        val songUri = android.content.ContentUris.withAppendedId(
+            MediaStore.Audio.Media.EXTERNAL_CONTENT_URI, song.id
+        )
+        var mediaStoreUpdated = false
+        var renamedByProvider = false
+        try {
+            val rows = context.contentResolver.update(songUri, values, null, null)
+            mediaStoreUpdated = rows > 0
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q && shouldRename && mediaStoreUpdated) {
+                val nf = newFile!!
+                renamedByProvider = true
+                currentPath = nf.absolutePath
+                // Provider dosyayı taşıdı; taşınan dosyanın eski tarihini de koru.
+                if (nf.exists() && originalMtimeMillis > 0L) nf.setLastModified(originalMtimeMillis)
+            }
+            Log.d("MusicRepository", "MediaStore guncellendi: $rows satir")
+        } catch (e: Exception) {
+            Log.e("MusicRepository", "MediaStore guncelleme hatasi", e)
+        }
+
+        // Ana güncellemeden bağımsız: MediaStore'daki DATE_MODIFIED'i eski değerinde tut.
+        if (song.dateModified > 0L) {
+            try {
+                val dateValues = android.content.ContentValues().apply {
+                    put(MediaStore.MediaColumns.DATE_MODIFIED, song.dateModified)
+                }
+                context.contentResolver.update(songUri, dateValues, null, null)
+            } catch (e: Exception) {
+                Log.e("MusicRepository", "DATE_MODIFIED geri yuklenemedi", e)
+            }
+        }
+
+        // 2. Fiziksel dosya adını güncelle (yalnızca MediaStore taşıyamadıysa veya eski Android).
+        // Başarısız olursa diğer adımları engellemez.
+        if (shouldRename && !renamedByProvider && oldFile.exists()) {
+            val physicalNewFile = newFile!!
+            if (oldFile.renameTo(physicalNewFile)) {
+                currentPath = physicalNewFile.absolutePath
+                // Manuel taşımada da dosyanın eski tarihini koru (yeni eklenmiş görünmesin).
+                if (physicalNewFile.exists() && originalMtimeMillis > 0L) {
+                    physicalNewFile.setLastModified(originalMtimeMillis)
+                }
+
+                // Rename associated lyrics file if exists
+                val renameDir = physicalNewFile.parentFile
+                song.lyricsPath?.let { oldLyricsPathStr ->
+                    val oldLyricsFile = File(oldLyricsPathStr)
+                    if (oldLyricsFile.exists()) {
+                        val lyricsExt = oldLyricsFile.extension
+                        val newLyricsFile = File(renameDir, "$sanitizedTitle.$lyricsExt")
+                        if (oldLyricsFile.renameTo(newLyricsFile)) {
+                            currentLyricsPath = newLyricsFile.absolutePath
                         }
                     }
                 }
             }
+        }
 
-            // 0. Dosyanin gercek metadata'sini kalici olarak guncelle (jaudiotagger)
-            try {
-                val targetFile = File(currentPath)
-                if (targetFile.exists() && targetFile.extension.lowercase() in listOf("mp3", "m4a", "aac", "mp4", "flac", "ogg", "opus")) {
-                    val audioFile = org.jaudiotagger.audio.AudioFileIO.read(targetFile)
-                    val tag = audioFile.tag ?: audioFile.createDefaultTag()
-                    tag.setField(org.jaudiotagger.tag.FieldKey.TITLE, newTitle)
-                    tag.setField(org.jaudiotagger.tag.FieldKey.ARTIST, newArtist)
-                    tag.setField(org.jaudiotagger.tag.FieldKey.ALBUM, newAlbum)
-                    audioFile.commit()
-                    Log.d("MusicRepository", "Dosya metadata'si kalici olarak guncellendi: $currentPath")
-                }
-            } catch (e: Exception) {
-                Log.e("MusicRepository", "Dosya metadata yazma hatasi", e)
-            }
-
-            // 1. MediaStore'u Guncelle
-            val values = android.content.ContentValues().apply {
-                put(MediaStore.Audio.Media.TITLE, newTitle)
-                put(MediaStore.Audio.Media.ARTIST, newArtist)
-                put(MediaStore.Audio.Media.ALBUM, newAlbum)
-                if (currentPath != song.path) {
-                    put(MediaStore.Audio.Media.DATA, currentPath)
-                }
-            }
-            val songUri = android.content.ContentUris.withAppendedId(
-                MediaStore.Audio.Media.EXTERNAL_CONTENT_URI, song.id
-            )
-            context.contentResolver.update(songUri, values, null, null)
-
-            // 2. Room DB'yi Guncelle
+        // 3. Room DB güncelle (arayüz buradan beslenir, HER ZAMAN çalışmalı)
+        try {
             val updatedSong = song.copy(
                 title = newTitle,
                 artistName = newArtist,
@@ -374,9 +441,35 @@ class MusicRepository @Inject constructor(
                 lyricsPath = currentLyricsPath
             )
             songDao.updateSong(updatedSong)
+            // Düzenlemeyi kalıcı yap: sonraki tarama (forceRefresh dahil) MediaStore'u
+            // baz alsa bile bu değerler korunur.
+            songOverrideDao.upsert(
+                SongOverride(
+                    songId = song.id,
+                    title = newTitle,
+                    artist = newArtist,
+                    album = newAlbum,
+                    path = currentPath,
+                    dateModified = originalMtimeMillis / 1000L
+                )
+            )
+            Log.d("MusicRepository", "Room DB guncellendi: ${updatedSong.title}")
         } catch (e: Exception) {
-            Log.e("MusicRepository", "Metadata guncellenemedi", e)
+            Log.e("MusicRepository", "Room DB guncelleme hatasi", e)
         }
+    }
+
+    private fun writeAudioMetadata(file: File, title: String, artist: String, album: String) {
+        if (!file.exists()) return
+        val extension = file.extension.lowercase()
+        if (extension !in listOf("mp3", "m4a", "aac", "mp4", "flac", "ogg", "opus")) return
+
+        val audioFile = org.jaudiotagger.audio.AudioFileIO.read(file)
+        val tag = audioFile.tag ?: audioFile.createDefaultTag() ?: return
+        tag.setField(org.jaudiotagger.tag.FieldKey.TITLE, title)
+        tag.setField(org.jaudiotagger.tag.FieldKey.ARTIST, artist)
+        tag.setField(org.jaudiotagger.tag.FieldKey.ALBUM, album)
+        audioFile.commit()
     }
 
     suspend fun deleteSong(song: Song) = withContext(Dispatchers.IO) {
@@ -409,6 +502,9 @@ class MusicRepository @Inject constructor(
 
             // 4. Room DB'den sil
             songDao.deleteSongs(listOf(song))
+
+            // 5. Kalıcı düzenleme override'ını da temizle
+            songOverrideDao.deleteBySongId(song.id)
         } catch (e: Exception) {
             Log.e("MusicRepository", "Şarkı silinemedi", e)
         }

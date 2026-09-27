@@ -24,7 +24,7 @@ class UpdateChecker @Inject constructor(
 
     companion object {
         private const val VERSION_URL =
-            "https://residential-argument-surgery-jpeg.trycloudflare.com/apps/android/BE-Music/version.json"
+            "NULL"
     }
 
     suspend fun checkForUpdate(): UpdateResult = withContext(Dispatchers.IO) {

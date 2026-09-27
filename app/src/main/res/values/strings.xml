@@ -270,4 +270,10 @@
     <string name="update_retry" translatable="false">Try Again</string>
     <string name="skip_silence">Skip Silence</string>
     <string name="skip_silence_description">Automatically skip silent parts during playback</string>
+    <string name="now_playing_artwork" translatable="false">Album artwork</string>
+    <string name="now_playing_pause">Pause</string>
+    <string name="now_playing_resume">Play</string>
+    <string name="now_playing_previous">Previous track</string>
+    <string name="now_playing_next">Next track</string>
+    <string name="notification_channel_playback_name">Playback</string>
 </resources>

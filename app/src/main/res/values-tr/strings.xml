@@ -1,5 +1,5 @@
 ﻿<resources>
-    <string name="app_name">BE Music</string>
+    <string name="app_name">BE Müzik</string>
     <string name="songs">Şarkılar</string>
     <string name="playlists">Çalma Listeleri</string>
     <string name="artists">Sanatçılar</string>
@@ -266,4 +266,10 @@
     <string name="update_retry">Tekrar Dene</string>
     <string name="skip_silence">Sessiz Bölümü Atla</string>
     <string name="skip_silence_description">Oynatma sırasında sessiz bölümleri otomatik olarak atla</string>
+    <string name="now_playing_artwork">Albüm kapağı</string>
+    <string name="now_playing_pause">Duraklat</string>
+    <string name="now_playing_resume">Çal</string>
+    <string name="now_playing_previous">Önceki şarkı</string>
+    <string name="now_playing_next">Sonraki şarkı</string>
+    <string name="notification_channel_playback_name">Çalma</string>
 </resources>

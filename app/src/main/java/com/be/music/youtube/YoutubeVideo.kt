@@ -38,13 +38,15 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
+import com.be.music.ui.formatDurationSeconds
 
 data class YoutubeVideo(
     val id: String,
     val title: String,
     val author: String,
     val thumbnailUrl: String,
-    val duration: String
+    /** Saniye cinsinden süre. Canlı yayınlarda negatif olabilir. */
+    val durationSeconds: Long
 )
 
 
@@ -87,7 +89,7 @@ fun YoutubeVideoItem(
                         },
                     contentScale = ContentScale.Crop
                 )
-                if (video.duration.isNotBlank()) {
+                if (video.durationSeconds > 0) {
                     Surface(
                         modifier = Modifier
                             .align(Alignment.BottomEnd)
@@ -96,7 +98,7 @@ fun YoutubeVideoItem(
                         color = Color.Black.copy(alpha = 0.75f)
                     ) {
                         Text(
-                            text = video.duration,
+                            text = formatDurationSeconds(video.durationSeconds),
                             color = Color.White,
                             fontSize = 10.sp,
                             fontWeight = FontWeight.Medium,

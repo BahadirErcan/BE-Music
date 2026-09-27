@@ -569,7 +569,7 @@ fun SettingsScreen(
                                     horizontalAlignment = Alignment.CenterHorizontally
                                 ) {
                                     Text(
-                                        text = String.format("%02d:%02d", timerRemaining / 60, timerRemaining % 60),
+                                        text = formatDurationSeconds(timerRemaining.toLong()),
                                         style = MaterialTheme.typography.headlineSmall,
                                         fontWeight = FontWeight.Bold,
                                         color = MaterialTheme.colorScheme.onPrimaryContainer

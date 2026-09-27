@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">BE Music</string>
+    <string name="app_name">BE 音乐</string>
     <string name="songs">歌曲</string>
     <string name="playlists">播放列表</string>
     <string name="artists">艺术家</string>

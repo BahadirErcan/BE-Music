@@ -21,5 +21,7 @@ data class FilterSettings(
     val autoPlaylistName: String = "List",
     val autoPlaylistNumberPosition: String = "SUFFIX", // PREFIX, SUFFIX
     val autoPlaylistMultiSong: Boolean = true, // true: çoklu şarkıyı tek playlist'te topla
-    val skipSilenceEnabled: Boolean = false // true: şarkılardaki sessiz yerleri otomatik atla
+    val skipSilenceEnabled: Boolean = false, // true: şarkılardaki sessiz yerleri otomatik atla
+    val songSortOrder: String = "DATE", // NAME, DATE, DURATION (ana ekran şarkı sıralaması)
+    val songSortReverse: Boolean = false
 )
