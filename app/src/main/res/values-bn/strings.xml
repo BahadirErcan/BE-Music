@@ -248,4 +248,21 @@
     <string name="no_history">কোনো ইতিহাস নেই</string>
     <string name="skip_silence">নীরবতা বাদ দিন</string>
     <string name="skip_silence_description">চলাকালে নীরব অংশ স্বয়ংক্রিয়ভাবে বাদ দিন</string>
+    <string name="playlist_menu_label">প্লেলিস্ট বিকল্প</string>
+    <string name="new_playlist_menu">নতুন প্লেলিস্ট</string>
+    <string name="add_to_playlist_menu">প্লেলিস্টে যোগ করুন</string>
+    <string name="create_8d_title">8D তৈরি করুন - (বিটা)</string>
+    <string name="create_8d_desc">এই গানের 8-মাত্রিক সংস্করণ তৈরি করুন!</string>
+    <string name="continue_button">চালিয়ে যান</string>
+    <string name="equalizer">ইকুয়ালাইজার</string>
+    <string name="eq_enable">ইকুয়ালাইজার সক্ষম করুন</string>
+    <string name="eq_presets">প্রিসেট</string>
+    <string name="eq_custom">কাস্টম</string>
+    <string name="eq_reset">রিসেট করুন</string>
+    <string name="create_8d_running">8D সংস্করণ তৈরি হচ্ছে...</string>
+    <string name="create_8d_result">8D সংস্করণ তৈরি হয়েছে: %1$s</string>
+    <string name="create_8d_failed">8D সংস্করণ তৈরি করা যায়নি</string>
+    <string name="keep_alive_permission_desc">অ্যাপ্লিকেশন তথ্য > অ্যাপ ব্যাটারি ব্যবহার > সীমাবদ্ধ নয় নির্বাচন করুন।
+অ্যাপ্লিকেশন তথ্য খুলতে ঠিক আছে চাপুন।</string>
+    <string name="ok">ঠিক আছে</string>
 </resources>

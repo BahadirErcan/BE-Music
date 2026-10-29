@@ -42,8 +42,14 @@ class YoutubeDownloadViewModel @Inject constructor(
     }.stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
     val displayedSearchResults: StateFlow<List<YoutubeVideo>> = _displayedSearchResults
 
+    // Loading göstergesi (Madde: sayfalama)
     private val _isLoading = MutableStateFlow(false)
     val isLoading: StateFlow<Boolean> = _isLoading
+
+    private var lastSearchQuery: String? = null
+    private var currentPage: org.schabi.newpipe.extractor.Page? = null
+    private val _isFetchingNextPage = MutableStateFlow(false)
+    val isFetchingNextPage: StateFlow<Boolean> = _isFetchingNextPage.asStateFlow()
 
     // Composite key: "videoId_type" (e.g. "abc123_m4a", "abc123_mp4")
     private val _downloadingVideos = MutableStateFlow<Set<String>>(emptySet())
@@ -91,7 +97,31 @@ class YoutubeDownloadViewModel @Inject constructor(
     fun loadMoreResults() {
         val currentCount = _visibleItemsCount.value
         if (currentCount < _searchResults.value.size) {
+            // Arabellekte gösterilmemiş sonuç varsa önce onları göster
             _visibleItemsCount.value = (currentCount + 18).coerceAtMost(_searchResults.value.size)
+            return
+        }
+        // Madde: Yukarı YouTube sunucusundan devamı getir (gerçek sayfalama)
+        val page = currentPage
+        val query = lastSearchQuery
+        if (page == null || query == null || _isFetchingNextPage.value || _isLoading.value) return
+        _isFetchingNextPage.value = true
+        viewModelScope.launch {
+            try {
+                val result = withContext(Dispatchers.IO) { searcher.searchPage(query, page) }
+                currentPage = result.nextPage
+                // Tekrarları ele (aynı videoyu tekrar getirebilir)
+                val existingIds = _searchResults.value.map { it.id }.toSet()
+                val newItems = result.items.filter { it.id !in existingIds }
+                if (newItems.isNotEmpty()) {
+                    _searchResults.value = _searchResults.value + newItems
+                    _visibleItemsCount.value = _visibleItemsCount.value + newItems.size
+                }
+            } catch (e: Exception) {
+                android.util.Log.e("YoutubeDownloadVM", "Next page fetch failed", e)
+            } finally {
+                _isFetchingNextPage.value = false
+            }
         }
     }
 
@@ -100,16 +130,19 @@ class YoutubeDownloadViewModel @Inject constructor(
 
         viewModelScope.launch {
             _isLoading.value = true
-            val results = performYoutubeSearch(query)
-            _searchResults.value = results
+            lastSearchQuery = query
+            currentPage = null
+            val result = performYoutubeSearch(query)
+            _searchResults.value = result.items
+            currentPage = result.nextPage
             _visibleItemsCount.value = 18
             _isLoading.value = false
         }
     }
 
-    private suspend fun performYoutubeSearch(query: String): List<YoutubeVideo> {
+    private suspend fun performYoutubeSearch(query: String): YoutubeSearcher.SearchResult {
         return withContext(Dispatchers.IO) {
-            searcher.search(query)
+            searcher.searchPage(query)
         }
     }
 

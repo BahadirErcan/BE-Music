@@ -249,4 +249,22 @@
     <string name="no_history">Sem histórico</string>
     <string name="skip_silence">Pular silêncio</string>
     <string name="skip_silence_description">Pular automaticamente partes silenciosas durante a reprodução</string>
+    <string name="playlist_menu_label">Opções de playlist</string>
+    <string name="new_playlist_menu">Nova playlist</string>
+    <string name="add_to_playlist_menu">Adicionar à playlist</string>
+    <string name="create_8d_title">CRIAR 8D - (BETA)</string>
+    <string name="create_8d_desc">Crie a versão 8 dimensional desta música!</string>
+    <string name="continue_button">CONTINUAR</string>
+    <string name="equalizer">Equalizador</string>
+    <string name="eq_enable">Ativar equalizador</string>
+    <string name="eq_presets">Predefinições</string>
+    <string name="eq_custom">Personalizado</string>
+    <string name="eq_reset">Redefinir</string>
+    <string name="create_8d_running">Criando versão 8D...</string>
+    <string name="create_8d_result">Versão 8D criada: %1$s</string>
+    <string name="create_8d_failed">Falha ao criar versão 8D</string>
+    <string name="keep_alive_permission_desc">É necessário remover a restrição de segundo plano:
+Dados do app > Permitir uso em segundo plano > Sem restrições.
+Toque em OK para abrir os dados do app.</string>
+    <string name="ok">OK</string>
 </resources>

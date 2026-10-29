@@ -17,7 +17,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         FilterSettings::class,
         SongOverride::class
     ],
-    version = 9,
+    version = 10,
     exportSchema = false
 )
 @TypeConverters(Converters::class)
@@ -54,6 +54,15 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        // Madde 3: songAddedAt sütunu - çalma listesine eklenme zaman damgası.
+        // Sütun boş başlatılır; mevcut şarkıların damgaları songIds sırasından
+        // türetilir (basamak = 1ms) ki eski "eklenme sırası" davranışı korusun.
+        val MIGRATION_9_10 = object : Migration(9, 10) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE `playlists` ADD COLUMN `songAddedAt` TEXT NOT NULL DEFAULT '{}'")
+            }
+        }
+
         fun getDatabase(context: Context): AppDatabase {
             return INSTANCE ?: synchronized(this) {
                 val instance = Room.databaseBuilder(
@@ -61,7 +70,7 @@ abstract class AppDatabase : RoomDatabase() {
                     AppDatabase::class.java,
                     "be_music_database"
                 )
-                .addMigrations(MIGRATION_7_8, MIGRATION_8_9)
+                .addMigrations(MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10)
                 .fallbackToDestructiveMigration()
                 .build()
                 INSTANCE = instance

@@ -276,4 +276,22 @@
     <string name="now_playing_previous">Previous track</string>
     <string name="now_playing_next">Next track</string>
     <string name="notification_channel_playback_name">Playback</string>
+    <string name="playlist_menu_label">Playlist Options</string>
+    <string name="new_playlist_menu">New Playlist</string>
+    <string name="add_to_playlist_menu">Add to Playlist</string>
+    <string name="create_8d_title">CREATE 8D - (BETA)</string>
+    <string name="create_8d_desc">Create the 8-dimensional version of this song!</string>
+    <string name="continue_button">CONTINUE</string>
+    <string name="equalizer">Equalizer</string>
+    <string name="eq_enable">Enable Equalizer</string>
+    <string name="eq_presets">Presets</string>
+    <string name="eq_custom">Custom</string>
+    <string name="eq_reset">Reset</string>
+    <string name="create_8d_running">Creating 8D version...</string>
+    <string name="create_8d_result">8D version created: %1$s</string>
+    <string name="create_8d_failed">Failed to create 8D version</string>
+    <string name="keep_alive_permission_desc">Please grant the unrestricted background permission:
+App info > Allow background usage > Unrestricted.
+Tap OK to open App info.</string>
+    <string name="ok">OK</string>
 </resources>

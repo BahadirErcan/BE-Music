@@ -249,4 +249,22 @@
     <string name="no_history">История пуста</string>
     <string name="skip_silence">Пропускать тишину</string>
     <string name="skip_silence_description">Автоматически пропускать тихие части при воспроизведении</string>
+    <string name="playlist_menu_label">Опции плейлиста</string>
+    <string name="new_playlist_menu">Новый плейлист</string>
+    <string name="add_to_playlist_menu">Добавить в плейлист</string>
+    <string name="create_8d_title">СОЗДАТЬ 8D - (BETA)</string>
+    <string name="create_8d_desc">Создайте 8-мерную версию этой песни!</string>
+    <string name="continue_button">ПРОДОЛЖИТЬ</string>
+    <string name="equalizer">Эквалайзер</string>
+    <string name="eq_enable">Включить эквалайзер</string>
+    <string name="eq_presets">Предустановки</string>
+    <string name="eq_custom">Свой</string>
+    <string name="eq_reset">Сбросить</string>
+    <string name="create_8d_running">Создание 8D-версии...</string>
+    <string name="create_8d_result">8D-версия создана: %1$s</string>
+    <string name="create_8d_failed">Не удалось создать 8D-версию</string>
+    <string name="keep_alive_permission_desc">Необходимо снять ограничение фона:
+О приложении > Разрешить работу в фоне > Без ограничений.
+Нажмите ОК, чтобы открыть сведения о приложении.</string>
+    <string name="ok">ОК</string>
 </resources>

@@ -249,4 +249,22 @@
     <string name="no_history">لا يوجد سجل</string>
     <string name="skip_silence">تخطي الصمت</string>
     <string name="skip_silence_description">تخطي الأجزاء الصامتة تلقائيًا أثناء التشغيل</string>
+    <string name="playlist_menu_label">خيارات قائمة التشغيل</string>
+    <string name="new_playlist_menu">قائمة تشغيل جديدة</string>
+    <string name="add_to_playlist_menu">إضافة إلى قائمة التشغيل</string>
+    <string name="create_8d_title">إنشاء 8D - (تجريبي)</string>
+    <string name="create_8d_desc">أنشئ النسخة ثمانية الأبعاد من هذه الأغنية!</string>
+    <string name="continue_button">متابعة</string>
+    <string name="equalizer">المعادل الصوتي</string>
+    <string name="eq_enable">تمكين المعادل الصوتي</string>
+    <string name="eq_presets">الإعدادات المسبقة</string>
+    <string name="eq_custom">مخصص</string>
+    <string name="eq_reset">إعادة تعيين</string>
+    <string name="create_8d_running">جارٍ إنشاء نسخة 8D...</string>
+    <string name="create_8d_result">تم إنشاء نسخة 8D: %1$s</string>
+    <string name="create_8d_failed">فشل إنشاء نسخة 8D</string>
+    <string name="keep_alive_permission_desc">يجب إزالة قيد الخلفية:
+معلومات التطبيق > السماح باستخدام الخلفية > غير مقيّد.
+اضغط حسنًا لفتح معلومات التطبيق.</string>
+    <string name="ok">حسنًا</string>
 </resources>

@@ -249,4 +249,22 @@
     <string name="no_history">暂无历史记录</string>
     <string name="skip_silence">跳过静音</string>
     <string name="skip_silence_description">播放时自动跳过静音部分</string>
+    <string name="playlist_menu_label">播放列表选项</string>
+    <string name="new_playlist_menu">新建播放列表</string>
+    <string name="add_to_playlist_menu">添加到播放列表</string>
+    <string name="create_8d_title">创建 8D - (测试版)</string>
+    <string name="create_8d_desc">创建这首歌曲的 8 维版本！</string>
+    <string name="continue_button">继续</string>
+    <string name="equalizer">均衡器</string>
+    <string name="eq_enable">启用均衡器</string>
+    <string name="eq_presets">预设</string>
+    <string name="eq_custom">自定义</string>
+    <string name="eq_reset">重置</string>
+    <string name="create_8d_running">正在创建 8D 版本...</string>
+    <string name="create_8d_result">8D 版本已创建：%1$s</string>
+    <string name="create_8d_failed">创建 8D 版本失败</string>
+    <string name="keep_alive_permission_desc">请取消后台限制：
+应用信息 > 允许后台使用 > 不受限。
+点按“确定”打开应用信息。</string>
+    <string name="ok">确定</string>
 </resources>

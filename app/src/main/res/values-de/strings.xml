@@ -249,4 +249,22 @@
     <string name="no_history">Kein Verlauf</string>
     <string name="skip_silence">Stille überspringen</string>
     <string name="skip_silence_description">Stille Abschnitte beim Abspielen automatisch überspringen</string>
+    <string name="playlist_menu_label">Playlist-Optionen</string>
+    <string name="new_playlist_menu">Neue Playlist</string>
+    <string name="add_to_playlist_menu">Zur Playlist hinzufügen</string>
+    <string name="create_8d_title">8D ERSTELLEN - (BETA)</string>
+    <string name="create_8d_desc">Erstelle die 8-dimensionale Version dieses Songs!</string>
+    <string name="continue_button">WEITER</string>
+    <string name="equalizer">Equalizer</string>
+    <string name="eq_enable">Equalizer aktivieren</string>
+    <string name="eq_presets">Voreinstellungen</string>
+    <string name="eq_custom">Benutzerdefiniert</string>
+    <string name="eq_reset">Zurücksetzen</string>
+    <string name="create_8d_running">8D-Version wird erstellt...</string>
+    <string name="create_8d_result">8D-Version erstellt: %1$s</string>
+    <string name="create_8d_failed">8D-Version konnte nicht erstellt werden</string>
+    <string name="keep_alive_permission_desc">Bitte hebe die Hintergrundbeschränkung auf:
+App-Info > Hintergrundnutzung erlauben > Uneingeschränkt.
+Tippe auf OK, um die App-Info zu öffnen.</string>
+    <string name="ok">OK</string>
 </resources>

@@ -177,12 +177,32 @@ class MusicRepository @Inject constructor(
     }
 
     suspend fun createPlaylist(name: String, songIds: List<Long>): Playlist {
-        val playlist = Playlist(name = name, songIds = songIds)
+        val now = System.currentTimeMillis()
+        val playlist = Playlist(
+            name = name,
+            songIds = songIds,
+            songAddedAt = songIds.withIndex().associate { (i, id) -> id to now + i }
+        )
         val id = playlistDao.insertPlaylist(playlist)
         val finalPlaylist = playlist.copy(id = id.toInt())
         // attempt export but ignore path here
         try { exportPlaylistToJson(finalPlaylist) } catch (_: Exception) {}
         return finalPlaylist
+    }
+
+    /**
+     * Madde 3: songIds yeniden yazıldığında eklenme zaman damgalarını koru.
+     * - Haritada bulunmayan şarkılara "şimdi" damgası verilir (yeni eklenenler).
+     * - Artık listede olmayan şarkıların damgaları temizlenir.
+     * - Çakışmayı önlemek için yeni damgalar 1 ms aralıklarla dağıtılır (sıra korunur).
+     */
+    fun withAddTimestamps(current: Playlist, newSongIds: List<Long>): Playlist {
+        val stamps = current.songAddedAt.toMutableMap()
+        val newIds = newSongIds.filter { !stamps.containsKey(it) }
+        var next = System.currentTimeMillis()
+        newIds.forEach { id -> stamps[id] = next++ }
+        val keptStamps = stamps.filterKeys { it in newSongIds }.toMutableMap()
+        return current.copy(songIds = newSongIds, songAddedAt = keptStamps)
     }
 
     suspend fun updatePlaylist(playlist: Playlist) {
@@ -254,17 +274,19 @@ class MusicRepository @Inject constructor(
                             val existing = playlistDao.getPlaylistByName(importedPlaylist.name)
                             if (existing == null) {
                                 playlistDao.insertPlaylist(
-                                    Playlist(
-                                        name = importedPlaylist.name,
-                                        songIds = importedPlaylist.songIds,
-                                        filePath = file.absolutePath
+                                    withAddTimestamps(
+                                        importedPlaylist.copy(id = 0, filePath = file.absolutePath),
+                                        importedPlaylist.songIds
                                     )
                                 )
                             } else {
                                 playlistDao.updatePlaylist(
-                                    existing.copy(
-                                        songIds = importedPlaylist.songIds,
-                                        filePath = file.absolutePath
+                                    withAddTimestamps(
+                                        existing.copy(
+                                            songIds = importedPlaylist.songIds,
+                                            filePath = file.absolutePath
+                                        ),
+                                        importedPlaylist.songIds
                                     )
                                 )
                             }
@@ -296,17 +318,19 @@ class MusicRepository @Inject constructor(
                 val existing = playlistDao.getPlaylistByName(importedPlaylist.name)
                 if (existing == null) {
                     playlistDao.insertPlaylist(
-                        Playlist(
-                            name = importedPlaylist.name,
-                            songIds = importedPlaylist.songIds,
-                            filePath = plFile.absolutePath
+                        withAddTimestamps(
+                            importedPlaylist.copy(id = 0, filePath = plFile.absolutePath),
+                            importedPlaylist.songIds
                         )
                     )
                 } else {
                     playlistDao.updatePlaylist(
-                        existing.copy(
-                            songIds = importedPlaylist.songIds,
-                            filePath = plFile.absolutePath
+                        withAddTimestamps(
+                            existing.copy(
+                                songIds = importedPlaylist.songIds,
+                                filePath = plFile.absolutePath
+                            ),
+                            importedPlaylist.songIds
                         )
                     )
                 }

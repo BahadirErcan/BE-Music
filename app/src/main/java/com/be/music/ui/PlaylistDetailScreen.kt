@@ -49,6 +49,9 @@ fun PlaylistDetailScreen(
     var showInvertConfirm by remember { mutableStateOf(false) }
     var showPlaylistCreateDialog by remember { mutableStateOf(false) }
     var showRemoveDialog by remember { mutableStateOf(false) }
+    // Madde 2: seçim modu çalma listesi menüsü + liste seçici diyalog
+    var showPlaylistMenu by remember { mutableStateOf(false) }
+    var showPlaylistPickerDialog by remember { mutableStateOf(false) }
 
     BackHandler(enabled = showFullPlayer || isSelectionMode) {
         when {
@@ -87,8 +90,14 @@ fun PlaylistDetailScreen(
             PlaylistSort.ALPHA -> initialPlaylistSongs.sortedBy { it.title.lowercase() }
             PlaylistSort.DURATION -> initialPlaylistSongs.sortedBy { it.duration }
             PlaylistSort.ADDED -> {
+                // Madde 3: indirme tarihi değil, çalma listesine eklenme zaman damgası baz alınır.
+                // Yeniden eklenenler/en son eklenenler üstte; damga yoksa (eski veri)
+                // songIds sırası yedek kullanılır.
+                val addedAt = playlist?.songAddedAt ?: emptyMap()
                 val orderById = playlist?.songIds?.withIndex()?.associate { (i, id) -> id to i } ?: emptyMap()
-                initialPlaylistSongs.sortedByDescending { orderById[it.id] ?: -1 }
+                initialPlaylistSongs.sortedWith(
+                    compareBy { song -> addedAt[song.id] ?: Long.MIN_VALUE }
+                ).asReversed()
             }
         }
         if (sortReverse) sorted.reversed() else sorted
@@ -122,8 +131,33 @@ fun PlaylistDetailScreen(
                         IconButton(onClick = { showRemoveDialog = true }) {
                             Icon(Icons.Default.Delete, contentDescription = stringResource(R.string.remove_mode))
                         }
-                        IconButton(onClick = { if (selectedSongIds.isNotEmpty()) showPlaylistCreateDialog = true }) {
-                            Icon(Icons.Default.PlaylistAdd, contentDescription = stringResource(R.string.create_playlist_btn))
+                        // Madde 2: seçim modunda "three line" ikonu + menü
+                        // (Yeni Çalma Listesi / Çalma Listesine Ekle)
+                        Box {
+                            IconButton(onClick = { if (selectedSongIds.isNotEmpty()) showPlaylistMenu = true }) {
+                                Icon(Icons.Default.QueueMusic, contentDescription = stringResource(R.string.playlist_menu_label))
+                            }
+                            DropdownMenu(
+                                expanded = showPlaylistMenu,
+                                onDismissRequest = { showPlaylistMenu = false }
+                            ) {
+                                DropdownMenuItem(
+                                    text = { Text(stringResource(R.string.new_playlist_menu)) },
+                                    onClick = {
+                                        showPlaylistMenu = false
+                                        if (selectedSongIds.isNotEmpty()) showPlaylistCreateDialog = true
+                                    },
+                                    leadingIcon = { Icon(Icons.Default.PlaylistAdd, contentDescription = null) }
+                                )
+                                DropdownMenuItem(
+                                    text = { Text(stringResource(R.string.add_to_playlist_menu)) },
+                                    onClick = {
+                                        showPlaylistMenu = false
+                                        if (selectedSongIds.isNotEmpty()) showPlaylistPickerDialog = true
+                                    },
+                                    leadingIcon = { Icon(Icons.Default.PlaylistAddCheck, contentDescription = null) }
+                                )
+                            }
                         }
                     }
                     IconButton(
@@ -331,6 +365,33 @@ fun PlaylistDetailScreen(
                 }) { Text(stringResource(R.string.create)) }
             },
             dismissButton = { TextButton(onClick = { showPlaylistCreateDialog = false }) { Text(stringResource(R.string.cancel)) } }
+        )
+    }
+
+    // Madde 2: Seçili şarkıları mevcut bir çalma listesine ekleme diyaloğu
+    if (showPlaylistPickerDialog) {
+        AlertDialog(
+            onDismissRequest = { showPlaylistPickerDialog = false },
+            title = { Text(stringResource(R.string.add_to_playlist_menu)) },
+            text = {
+                LazyColumn {
+                    // Mevcut çalma listesi kendisine eklenemez; diğerlerini listele
+                    val otherPlaylists = playlists.filter { it.id != playlistId }
+                    if (otherPlaylists.isEmpty()) item { Text(stringResource(R.string.no_playlists), modifier = Modifier.padding(16.dp)) }
+                    else items(otherPlaylists) { target ->
+                        TextButton(
+                            onClick = {
+                                viewModel.addSelectedSongsToPlaylist(target)
+                                showPlaylistPickerDialog = false
+                                viewModel.clearSelection()
+                            },
+                            modifier = Modifier.fillMaxWidth()
+                        ) { Text(target.name, style = MaterialTheme.typography.titleMedium) }
+                    }
+                }
+            },
+            confirmButton = {},
+            dismissButton = { TextButton(onClick = { showPlaylistPickerDialog = false }) { Text(stringResource(R.string.close)) } }
         )
     }
 

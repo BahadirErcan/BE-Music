@@ -3,9 +3,11 @@ package com.be.music.ui
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.ui.draw.clip
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -66,7 +68,7 @@ fun SongPickerScreen(
             ) {
                 items(songs, key = { it.id }) { song ->
                     val isSelected = selectedIds.contains(song.id)
-                    SongPickerItem(
+        SongPickerItem(
                         song = song,
                         isSelected = isSelected,
                         onToggle = {
@@ -100,7 +102,8 @@ fun SongPickerItem(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Box(modifier = Modifier.size(40.dp)) {
-                Icon(Icons.Default.Check, contentDescription = null) // Placeholder for SongAlbumArt if not available
+                // Madde 1: Tik ikonu yerine gerçek thumbnail göster
+                SongAlbumArt(song = song, modifier = Modifier.fillMaxSize().clip(MaterialTheme.shapes.small))
             }
             Spacer(modifier = Modifier.width(12.dp))
             Column(modifier = Modifier.weight(1f)) {

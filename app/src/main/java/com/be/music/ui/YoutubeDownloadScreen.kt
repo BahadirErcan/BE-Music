@@ -46,7 +46,10 @@ fun YoutubeDownloadScreen(
     val context = LocalContext.current
     val searchResults by viewModel.displayedSearchResults.collectAsStateWithLifecycle()
     val fullSearchResults by viewModel.searchResults.collectAsStateWithLifecycle()
+    // displayed == full olduğunda da scroll tetikleyicinin yeniden çalışması için boyutu izle
+    val displayedResultsCount by remember { derivedStateOf { searchResults.size } }
     val isLoading by viewModel.isLoading.collectAsStateWithLifecycle()
+    val isFetchingNextPage by viewModel.isFetchingNextPage.collectAsStateWithLifecycle()
     val downloadingVideos by viewModel.downloadingVideos.collectAsStateWithLifecycle()
     val downloadProgress by viewModel.downloadProgress.collectAsStateWithLifecycle()
     val spotifyDownloading by viewModel.spotifyDownloading.collectAsStateWithLifecycle()
@@ -78,10 +81,13 @@ fun YoutubeDownloadScreen(
         }
     }
 
-    LaunchedEffect(listState, fullSearchResults.size) {
+    LaunchedEffect(listState, displayedResultsCount) {
         snapshotFlow { listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: -1 }
             .collect { lastVisibleIndex ->
-                if (lastVisibleIndex >= searchResults.lastIndex && searchResults.size < fullSearchResults.size) {
+                // Madde: Listenin sonuna gelindiğinde YouTube'un devammı
+                // (sonraki sayfası) getirilir. displayed == full olsa bile
+                // loadMoreResults() sonraki sayfayı çeker.
+                if ((lastVisibleIndex >= searchResults.lastIndex && lastVisibleIndex >= 0 && searchResults.isNotEmpty())) {
                     viewModel.loadMoreResults()
                 }
             }
@@ -463,6 +469,14 @@ fun YoutubeDownloadScreen(
                         musicProgress = downloadProgress["${video.id}_m4a"] ?: 0,
                         videoProgress = downloadProgress["${video.id}_mp4"] ?: 0
                     )
+                }
+                // Madde: sonraki YouTube sayfası yüklenirken listenin altında göstergesi
+                if (isFetchingNextPage) {
+                    item {
+                        Box(modifier = Modifier.fillMaxWidth().padding(16.dp), contentAlignment = Alignment.Center) {
+                            CircularProgressIndicator(modifier = Modifier.size(24.dp), strokeWidth = 2.dp)
+                        }
+                    }
                 }
             }
         }

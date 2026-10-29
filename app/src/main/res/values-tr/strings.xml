@@ -272,4 +272,22 @@
     <string name="now_playing_previous">Önceki şarkı</string>
     <string name="now_playing_next">Sonraki şarkı</string>
     <string name="notification_channel_playback_name">Çalma</string>
+    <string name="playlist_menu_label">Çalma Listesi Seçenekleri</string>
+    <string name="new_playlist_menu">Yeni Çalma Listesi</string>
+    <string name="add_to_playlist_menu">Çalma Listesine Ekle</string>
+    <string name="create_8d_title">8D OLUŞTUR - (BETA)</string>
+    <string name="create_8d_desc">Bu şarkının 8 boyutlu halini oluştur!</string>
+    <string name="continue_button">DEVAM</string>
+    <string name="equalizer">Ekolayzer</string>
+    <string name="eq_enable">Ekolayzer Etkin</string>
+    <string name="eq_presets">Hazır Ayarlar</string>
+    <string name="eq_custom">Özel</string>
+    <string name="eq_reset">Sıfırla</string>
+    <string name="create_8d_running">8D sürümü oluşturuluyor...</string>
+    <string name="create_8d_result">8D sürümü oluşturuldu: %1$s</string>
+    <string name="create_8d_failed">8D sürümü oluşturulamadı</string>
+    <string name="keep_alive_permission_desc">Arkaplan kısıtlamasını kaldırmanız gerekiyor:
+Uygulama bilgileri > Arkaplanda uygulama kullanımına izin ver > Kısıtlanmamış seçeneğini seçin.
+Uygulama bilgileri ekranını açmak için TAMAM\'a dokunun.</string>
+    <string name="ok">Tamam</string>
 </resources>

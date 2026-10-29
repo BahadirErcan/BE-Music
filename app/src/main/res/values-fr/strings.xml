@@ -249,4 +249,22 @@
     <string name="no_history">Aucun historique</string>
     <string name="skip_silence">Ignorer le silence</string>
     <string name="skip_silence_description">Ignorer automatiquement les parties silencieuses pendant la lecture</string>
+    <string name="playlist_menu_label">Options de playlist</string>
+    <string name="new_playlist_menu">Nouvelle playlist</string>
+    <string name="add_to_playlist_menu">Ajouter à la playlist</string>
+    <string name="create_8d_title">CRÉER 8D - (BETA)</string>
+    <string name="create_8d_desc">Créez la version 8 dimensions de cette chanson !</string>
+    <string name="continue_button">CONTINUER</string>
+    <string name="equalizer">Égaliseur</string>
+    <string name="eq_enable">Activer l\'égaliseur</string>
+    <string name="eq_presets">Préréglages</string>
+    <string name="eq_custom">Personnalisé</string>
+    <string name="eq_reset">Réinitialiser</string>
+    <string name="create_8d_running">Création de la version 8D...</string>
+    <string name="create_8d_result">Version 8D créée : %1$s</string>
+    <string name="create_8d_failed">Échec de la création de la version 8D</string>
+    <string name="keep_alive_permission_desc">Vous devez supprimer la restriction d\'arrière-plan :
+Infos application > Autoriser l\'utilisation en arrière-plan > Sans restriction.
+Appuyez sur OK pour ouvrir les infos de l\'application.</string>
+    <string name="ok">OK</string>
 </resources>

@@ -135,6 +135,8 @@ fun MainMusicScreen(viewModel: MusicViewModel, navController: NavController) {
     val selectedSongIds by viewModel.selectedSongIds.collectAsState()
 
     var showPlaylistCreateDialog by remember { mutableStateOf(false) }
+    // Madde 2: seçili şarkıları mevcut çalma listesine ekleme diyaloğu
+    var showAddSelectedDialog by remember { mutableStateOf(false) }
     var showAddToPlaylistDialog by remember { mutableStateOf<Song?>(null) }
     var showFullPlayer by remember { mutableStateOf(false) }
     var showDeleteDialog by remember { mutableStateOf<Song?>(null) }
@@ -203,13 +205,40 @@ fun MainMusicScreen(viewModel: MusicViewModel, navController: NavController) {
                         var showMainDropdown by remember { mutableStateOf(false) }
                         var showSortSubmenu by remember { mutableStateOf(false) }
                         var showRemoveDialog by remember { mutableStateOf(false) }
+                        // Madde 2: Seçim modunda çalma listesi menüsü durumu
+                        var showPlaylistMenu by remember { mutableStateOf(false) }
 
                         if (isSelectionMode) {
                             IconButton(onClick = { showRemoveDialog = true }) {
                                 Icon(Icons.Default.Delete, contentDescription = stringResource(R.string.remove_mode))
                             }
-                            IconButton(onClick = { if (selectedSongIds.isNotEmpty()) showPlaylistCreateDialog = true }) {
-                                Icon(Icons.Default.PlaylistAdd, contentDescription = stringResource(R.string.create_playlist_btn))
+                            // Yeni çalma listesi butonunun yerine "three line" (çalma listesi) ikonu:
+                            // tıklanınca menüde Yeni Çalma Listesi ve Çalma Listesine Ekle seçenekleri çıkar.
+                            Box {
+                                IconButton(onClick = { if (selectedSongIds.isNotEmpty()) showPlaylistMenu = true }) {
+                                    Icon(Icons.Default.QueueMusic, contentDescription = stringResource(R.string.playlist_menu_label))
+                                }
+                                DropdownMenu(
+                                    expanded = showPlaylistMenu,
+                                    onDismissRequest = { showPlaylistMenu = false }
+                                ) {
+                                    DropdownMenuItem(
+                                        text = { Text(stringResource(R.string.new_playlist_menu)) },
+                                        onClick = {
+                                            showPlaylistMenu = false
+                                            if (selectedSongIds.isNotEmpty()) showPlaylistCreateDialog = true
+                                        },
+                                        leadingIcon = { Icon(Icons.Default.PlaylistAdd, contentDescription = null) }
+                                    )
+                                    DropdownMenuItem(
+                                        text = { Text(stringResource(R.string.add_to_playlist_menu)) },
+                                        onClick = {
+                                            showPlaylistMenu = false
+                                            if (selectedSongIds.isNotEmpty()) showAddSelectedDialog = true
+                                        },
+                                        leadingIcon = { Icon(Icons.Default.PlaylistAddCheck, contentDescription = null) }
+                                    )
+                                }
                             }
                         }
 
@@ -238,6 +267,12 @@ fun MainMusicScreen(viewModel: MusicViewModel, navController: NavController) {
                                         text = { Text(stringResource(R.string.selection_mode)) },
                                         onClick = { viewModel.toggleSelectionMode(); showMainDropdown = false },
                                         leadingIcon = { Icon(Icons.Default.LibraryAddCheck, contentDescription = null) }
+                                    )
+                                    Divider()
+                                    DropdownMenuItem(
+                                        text = { Text(stringResource(R.string.equalizer)) },
+                                        onClick = { navController.navigate("equalizer"); showMainDropdown = false },
+                                        leadingIcon = { Icon(Icons.Default.Equalizer, contentDescription = null) }
                                     )
                                     Divider()
                                     DropdownMenuItem(
@@ -448,6 +483,31 @@ fun MainMusicScreen(viewModel: MusicViewModel, navController: NavController) {
             },
             confirmButton = {},
             dismissButton = { TextButton(onClick = { showAddToPlaylistDialog = null }) { Text(stringResource(R.string.close)) } }
+        )
+    }
+
+    // Madde 2: Seçili şarkıları mevcut bir çalma listesine ekleme diyaloğu
+    if (showAddSelectedDialog) {
+        AlertDialog(
+            onDismissRequest = { showAddSelectedDialog = false },
+            title = { Text(stringResource(R.string.add_to_playlist_menu)) },
+            text = {
+                LazyColumn {
+                    if (playlists.isEmpty()) item { Text(stringResource(R.string.no_playlists), modifier = Modifier.padding(16.dp)) }
+                    else items(playlists) { playlist ->
+                        TextButton(
+                            onClick = {
+                                viewModel.addSelectedSongsToPlaylist(playlist)
+                                showAddSelectedDialog = false
+                                viewModel.clearSelection()
+                            },
+                            modifier = Modifier.fillMaxWidth()
+                        ) { Text(playlist.name, style = MaterialTheme.typography.titleMedium) }
+                    }
+                }
+            },
+            confirmButton = {},
+            dismissButton = { TextButton(onClick = { showAddSelectedDialog = false }) { Text(stringResource(R.string.close)) } }
         )
     }
 
@@ -912,24 +972,27 @@ fun FullPlayerScreen(viewModel: MusicViewModel, song: Song, isPlaying: Boolean, 
     val nextSong by viewModel.nextSong.collectAsState()
     val lyricsSearchError by viewModel.lyricsSearchError.collectAsState()
     val currentLyrics by viewModel.currentLyrics.collectAsState()
+    val is8DProcessing by viewModel.is8DProcessing.collectAsState()
+    val eightDStatus by viewModel.eightDStatus.collectAsState()
 
     // Madde 6: Düzenleme diyaloğu
     var showEditDialog by remember { mutableStateOf(false) }
+    var show8DDialog by remember { mutableStateOf(false) }
     var showMenu by remember { mutableStateOf(false) }
-    var showLyrics by remember { mutableStateOf(false) }
-
-    LaunchedEffect(currentLyrics) {
-        if (currentLyrics.isNotEmpty()) {
-            showLyrics = true
-        }
-    }
+    // Madde: Sözler indirilmişse bile thumbnail her zaman ilk görünür;
+    // kullanıcı "Sözleri Göster" butonuna basınca gösterilir.
+    var showLyrics by remember(song.id) { mutableStateOf(false) }
 
     Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
         Column(modifier = Modifier.fillMaxSize().navigationBarsPadding().padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                 IconButton(onClick = onCollapse) { Icon(Icons.Default.KeyboardArrowDown, contentDescription = null) }
                 Text(stringResource(R.string.playing_now), style = MaterialTheme.typography.titleMedium)
-                Row {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    // Madde 8: 8D butonu (Düzenle butonunun solunda)
+                    TextButton(onClick = { show8DDialog = true }, contentPadding = PaddingValues(horizontal = 8.dp)) {
+                        Text("8D", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+                    }
                     IconButton(onClick = { showEditDialog = true }) {
                         Icon(Icons.Default.Edit, contentDescription = stringResource(R.string.edit_song_info))
                     }
@@ -979,6 +1042,23 @@ fun FullPlayerScreen(viewModel: MusicViewModel, song: Song, isPlaying: Boolean, 
                     modifier = Modifier.fillMaxWidth()
                 )
             }
+            // Madde 8: 8D işleme durumu
+            if (is8DProcessing) {
+                Spacer(modifier = Modifier.height(4.dp))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(eightDStatus ?: stringResource(R.string.create_8d_running), style = MaterialTheme.typography.bodySmall)
+                }
+            } else if (eightDStatus != null) {
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    eightDStatus!!,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.primary
+                )
+            }
+
             Spacer(modifier = Modifier.height(8.dp))
             Text(song.title, style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
             Text(song.artistName, style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.primary)
@@ -1021,6 +1101,55 @@ fun FullPlayerScreen(viewModel: MusicViewModel, song: Song, isPlaying: Boolean, 
                 }
             }
         }
+    }
+
+    // Madde 8: 8D oluşturma diyaloğu (BETA)
+    if (show8DDialog) {
+        AlertDialog(
+            onDismissRequest = { show8DDialog = false },
+            text = {
+                Column(modifier = Modifier.fillMaxWidth()) {
+                    // Başlık satırı + sağ üstte X (kapat)
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            stringResource(R.string.create_8d_title),
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier.weight(1f)
+                        )
+                        IconButton(onClick = { show8DDialog = false }, modifier = Modifier.size(28.dp)) {
+                            Icon(Icons.Default.Close, contentDescription = stringResource(R.string.close))
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Text(
+                        stringResource(R.string.create_8d_desc),
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                    Spacer(modifier = Modifier.height(16.dp))
+                    // ASCII şemasındaki ayırıcı çizgi
+                    HorizontalDivider()
+                    Spacer(modifier = Modifier.height(12.dp))
+                    // En altta DEVAM butonu (tam genişlik)
+                    Button(
+                        onClick = {
+                            show8DDialog = false
+                            viewModel.create8DVersion(song)
+                        },
+                        enabled = !is8DProcessing,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text(stringResource(R.string.continue_button))
+                    }
+                }
+            },
+            confirmButton = {},
+            dismissButton = {}
+        )
     }
 
     // Madde 6: Şarkı bilgisi düzenleme diyaloğu

@@ -17,6 +17,7 @@ import com.be.music.data.AppDatabase
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 class PlaybackService : MediaSessionService() {
@@ -72,6 +73,21 @@ class PlaybackService : MediaSessionService() {
         mediaSession = MediaSession.Builder(this, player)
             .setSessionActivity(sessionActivityIntent)
             .build()
+
+        // Ekolayzer: yerleşik equalizer'ı oynatıcı audio session'ına bağla.
+        // Session id player'ın ses motoru başlatılana kadar UNSET kalabilir -> kısa aralıklarla tekrar dene.
+        // Not: ExoPlayer'a SADECE main thread'den erişilebilir (media3 thread kontrolü).
+        EqualizerManager.appContext = applicationContext
+        serviceScope.launch(Dispatchers.Main) {
+            for (attempt in 1..20) {
+                val id = player.audioSessionId
+                if (id != C.AUDIO_SESSION_ID_UNSET && id != 0) {
+                    EqualizerManager.attach(id)
+                    break
+                }
+                delay(500)
+            }
+        }
     }
 
     override fun onGetSession(controllerInfo: MediaSession.ControllerInfo): MediaSession? {
@@ -107,8 +123,21 @@ class PlaybackService : MediaSessionService() {
     }
 
     override fun onDestroy() {
+        // Madde 4: Servis yok edilirken son oynatma durumunu kaydet (mini player restore)
+        try {
+            mediaSession?.player?.let { player ->
+                val id = player.currentMediaItem?.mediaId?.toLongOrNull()
+                if (id != null && id > 0L) {
+                    getSharedPreferences("playback_prefs", MODE_PRIVATE).edit()
+                        .putLong("last_song_id", id)
+                        .putLong("last_position", player.currentPosition.coerceAtLeast(0L))
+                        .apply()
+                }
+            }
+        } catch (_: Exception) {}
         notificationProvider?.release()
         notificationProvider = null
+        EqualizerManager.detach()
         mediaSession?.run {
             player.release()
             release()

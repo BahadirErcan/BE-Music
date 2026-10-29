@@ -24,6 +24,7 @@ import com.be.music.R
 import com.be.music.premium.PremiumManager
 import com.be.music.update.UpdateChecker
 import com.be.music.update.UpdateResult
+import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import kotlinx.coroutines.launch
@@ -42,6 +43,8 @@ fun SettingsScreen(
 
     var folderInput by remember { mutableStateOf("") }
     var showLanguageDialog by remember { mutableStateOf(false) }
+    // Madde 6: Uygulamayı Açık Tut rehber pop-up'ı
+    var showKeepAliveDialog by remember { mutableStateOf(false) }
     val context = LocalContext.current
 
     val keepAlivePrefs = remember {
@@ -977,6 +980,8 @@ fun SettingsScreen(
                                 if (PremiumManager.isPremiumStatic) {
                                     keepAliveEnabled = enabled
                                     keepAlivePrefs.edit().putBoolean("keep_alive_enabled", enabled).apply()
+                                    // Madde 6: Açılırken pil kısıtlaması rehberi göster
+                                    if (enabled) showKeepAliveDialog = true
                                 } else {
                                     navController?.navigate("premium")
                                 }
@@ -1275,6 +1280,70 @@ fun SettingsScreen(
             }
 
             item { Spacer(modifier = Modifier.height(32.dp)) }
+        }
+
+        // Madde 6: Uygulamayı Açık Tut — pil kısıtlaması rehberi pop-up'ı
+        if (showKeepAliveDialog) {
+            AlertDialog(
+                onDismissRequest = { showKeepAliveDialog = false },
+                text = {
+                    Column(modifier = Modifier.fillMaxWidth()) {
+                        // Başlık + sağ üstte X (kapat)
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = stringResource(R.string.keep_alive),
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold,
+                                modifier = Modifier.weight(1f)
+                            )
+                            IconButton(
+                                onClick = { showKeepAliveDialog = false },
+                                modifier = Modifier.size(28.dp)
+                            ) {
+                                Icon(
+                                    Icons.Default.Close,
+                                    contentDescription = stringResource(R.string.close)
+                                )
+                            }
+                        }
+                        Spacer(modifier = Modifier.height(12.dp))
+                        Text(
+                            text = stringResource(R.string.keep_alive_permission_desc),
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                        Spacer(modifier = Modifier.height(16.dp))
+                        // En altta Tamam butonu → Uygulama bilgileri ekranı (pil kullanımı oradan)
+                        Button(
+                            onClick = {
+                                showKeepAliveDialog = false
+                                try {
+                                    val intent = android.content.Intent(
+                                        android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS
+                                    ).apply {
+                                        data = android.net.Uri.parse("package:${context.packageName}")
+                                    }
+                                    context.startActivity(intent)
+                                } catch (e: Exception) {
+                                    Toast.makeText(
+                                        context,
+                                        context.getString(R.string.unknown_error),
+                                        Toast.LENGTH_SHORT
+                                    ).show()
+                                }
+                            },
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text(stringResource(R.string.ok))
+                        }
+                    }
+                },
+                confirmButton = {},
+                dismissButton = {}
+            )
         }
 
         if (showLanguageDialog) {

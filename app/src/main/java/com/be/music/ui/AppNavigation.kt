@@ -28,6 +28,12 @@ fun AppNavigation(viewModel: MusicViewModel) {
             )
         }
 
+        composable("equalizer") {
+            EqualizerScreen(
+                onBack = { navController.popBackStack() }
+            )
+        }
+
         composable("premium") {
             PremiumScreen(
                 onBack = { navController.popBackStack() }

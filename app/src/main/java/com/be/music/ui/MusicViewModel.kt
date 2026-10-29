@@ -186,6 +186,85 @@ class MusicViewModel @Inject constructor(
     private val _currentLyrics = MutableStateFlow<List<com.be.music.youtube.LyricLine>>(emptyList())
     val currentLyrics = _currentLyrics.asStateFlow()
 
+    // Madde 4: Son oynatılan şarkı / pozisyon kalıcılığı (mini player restore)
+    private val playbackPrefs get() = getApplication<Application>()
+        .getSharedPreferences("playback_prefs", android.content.Context.MODE_PRIVATE)
+
+    private fun savePlaybackState(songId: Long?, positionMs: Long) {
+        if (songId == null || songId <= 0L) return
+        playbackPrefs.edit()
+            .putLong("last_song_id", songId)
+            .putLong("last_position", positionMs.coerceAtLeast(0L))
+            .apply()
+    }
+
+    private var lastPlaybackSaveTime = 0L
+
+    private fun maybeSavePlaybackState() {
+        val controller = mediaController ?: return
+        val song = _currentSong.value ?: return
+        val now = System.currentTimeMillis()
+        if (now - lastPlaybackSaveTime >= 5000) {
+            lastPlaybackSaveTime = now
+            savePlaybackState(song.id, controller.currentPosition)
+        }
+    }
+
+    private fun restoreLastPlayback() {
+        viewModelScope.launch {
+            val songId = playbackPrefs.getLong("last_song_id", -1L)
+            if (songId <= 0L) return@launch
+            val song = repository.getSongsByIds(listOf(songId)).firstOrNull() ?: return@launch
+            // Madde 4: mini player son bırakıldığı haliyle (durdurulmuş) görünsün
+            _currentSong.value = song
+            val savedPos = playbackPrefs.getLong("last_position", 0L)
+            _currentPosition.value = savedPos.coerceIn(0L, song.duration)
+            _duration.value = song.duration
+        }
+    }
+
+    // Madde 8: 8D ses işleme durumları
+    private val _is8DProcessing = MutableStateFlow(false)
+    val is8DProcessing = _is8DProcessing.asStateFlow()
+
+    private val _eightDStatus = MutableStateFlow<String?>(null)
+    val eightDStatus = _eightDStatus.asStateFlow()
+
+    fun create8DVersion(song: Song) {
+        if (_is8DProcessing.value) return
+        _is8DProcessing.value = true
+        _eightDStatus.value = null
+        viewModelScope.launch {
+            try {
+                val app = getApplication<Application>()
+                val output = com.be.music.player.EightDAudioProcessor.create8DVersion(
+                    app,
+                    song.path,
+                    songTitle = song.title,
+                    songArtist = song.artistName
+                ) { progress ->
+                    _eightDStatus.value = app.getString(R.string.create_8d_running) + " %$progress"
+                }
+                if (output != null) {
+                    _eightDStatus.value = app.getString(R.string.create_8d_result, output.name)
+                    // Yeni dosyayı kütüphaneye ekle
+                    scanMusic(force = true)
+                } else {
+                    _eightDStatus.value = app.getString(R.string.create_8d_failed)
+                }
+            } catch (e: Exception) {
+                android.util.Log.e("MusicViewModel", "8D oluşturulamadı", e)
+                _eightDStatus.value = getApplication<Application>().getString(R.string.create_8d_failed) + ": ${e.message ?: ""}"
+            } finally {
+                _is8DProcessing.value = false
+            }
+        }
+    }
+
+    fun clearEightDStatus() {
+        _eightDStatus.value = null
+    }
+
     init {
         viewModelScope.launch {
             val settings = repository.filterSettings.first()
@@ -196,6 +275,7 @@ class MusicViewModel @Inject constructor(
             }
             _sortReverse.value = settings.songSortReverse
         }
+        restoreLastPlayback()
         initializeController()
     }
 
@@ -221,10 +301,16 @@ class MusicViewModel @Inject constructor(
                     updateNextSong()
                     song?.let { repository.playHistoryManager.addEntry(it) }
                 }
+                // Madde 4: şarkı geçişinde oynatma durumunu kaydet
+                savePlaybackState(id, 0L)
             }
             override fun onIsPlayingChanged(isPlaying: Boolean) {
                 _isPlaying.value = isPlaying
-                if (isPlaying) startProgressTracker() else stopProgressTracker()
+                if (isPlaying) startProgressTracker() else {
+                    stopProgressTracker()
+                    // Madde 4: duraklatıldığında pozisyonu hemen kaydet
+                    savePlaybackState(_currentSong.value?.id, mediaController?.currentPosition ?: 0L)
+                }
             }
             override fun onRepeatModeChanged(newRepeatMode: Int) {
                 repeatMode.value = newRepeatMode
@@ -255,6 +341,7 @@ class MusicViewModel @Inject constructor(
             while (true) {
                 _currentPosition.value = mediaController?.currentPosition ?: 0L
                 _duration.value = mediaController?.duration ?: 0L
+                maybeSavePlaybackState()
                 delay(500)
             }
         }
@@ -297,7 +384,21 @@ class MusicViewModel @Inject constructor(
     }
 
     fun playPause() {
-        if (mediaController?.isPlaying == true) mediaController?.pause() else mediaController?.play()
+        val controller = mediaController ?: return
+        if (controller.isPlaying) {
+            controller.pause()
+            return
+        }
+        // Madde 4: Restore edilen şarkı için oturum boşsa — kaydedilen pozisyondan devam et
+        if (controller.mediaItemCount == 0 && _currentSong.value != null) {
+            val song = _currentSong.value!!
+            val resumePosition = playbackPrefs.getLong("last_position", _currentPosition.value)
+                .coerceIn(0L, song.duration)
+            playSong(song, listOf(song))
+            controller.seekTo(resumePosition)
+            return
+        }
+        controller.play()
     }
 
     fun next() = mediaController?.seekToNext()
@@ -334,7 +435,11 @@ class MusicViewModel @Inject constructor(
 
     fun updatePlaylistSongs(playlist: Playlist, songIds: List<Long>) {
         viewModelScope.launch {
-            repository.updatePlaylist(playlist.copy(songIds = songIds))
+            // Madde 3: eklenme damgalarını koru / yenilerine damga ver
+            val now = System.currentTimeMillis()
+            val stamps = playlist.songAddedAt.filterKeys { it in songIds }.toMutableMap()
+            songIds.filter { !stamps.containsKey(it) }.forEachIndexed { i, id -> stamps[id] = now + i }
+            repository.updatePlaylist(playlist.copy(songIds = songIds, songAddedAt = stamps))
         }
     }
 
@@ -346,8 +451,25 @@ class MusicViewModel @Inject constructor(
 
     fun addSongToPlaylist(playlist: Playlist, songId: Long) {
         viewModelScope.launch {
+            // Madde 3: eklenme zaman damgası kaydet
+            val now = System.currentTimeMillis()
             val updatedIds = (playlist.songIds + songId).distinct()
-            repository.updatePlaylist(playlist.copy(songIds = updatedIds))
+            val stamps = playlist.songAddedAt.toMutableMap()
+            if (!stamps.containsKey(songId)) stamps[songId] = now
+            repository.updatePlaylist(playlist.copy(songIds = updatedIds, songAddedAt = stamps))
+        }
+    }
+
+    // Madde 2: Seçim modunda seçili tüm şarkıları mevcut bir çalma listesine ekle
+    fun addSelectedSongsToPlaylist(playlist: Playlist) {
+        val ids = _selectedSongIds.value.toList()
+        if (ids.isEmpty()) return
+        viewModelScope.launch {
+            val now = System.currentTimeMillis()
+            val updatedIds = (playlist.songIds + ids).distinct()
+            val stamps = playlist.songAddedAt.toMutableMap()
+            ids.filter { !stamps.containsKey(it) }.forEachIndexed { i, id -> stamps[id] = now + i }
+            repository.updatePlaylist(playlist.copy(songIds = updatedIds, songAddedAt = stamps))
         }
     }
 
@@ -355,7 +477,9 @@ class MusicViewModel @Inject constructor(
         viewModelScope.launch {
             val playlist = playlistsState.value.find { it.id == playlistId } ?: return@launch
             val updatedIds = playlist.songIds.filter { it != songId }
-            repository.updatePlaylist(playlist.copy(songIds = updatedIds))
+            // Madde 3: kaldırılan şarkının damgasını da temizle
+            val stamps = playlist.songAddedAt - songId
+            repository.updatePlaylist(playlist.copy(songIds = updatedIds, songAddedAt = stamps))
         }
     }
 
@@ -368,7 +492,10 @@ class MusicViewModel @Inject constructor(
             val currentIds = playlist.songIds.toSet()
             val allSongIds = songsState.value.map { it.id }
             val invertedIds = allSongIds.filter { it !in currentIds }
-            repository.updatePlaylist(playlist.copy(songIds = invertedIds))
+            // Madde 3: inverted şarkılar listeden "yeniden eklenmiş" gibi damgalanır
+            val now = System.currentTimeMillis()
+            val stamps = invertedIds.withIndex().associate { (i, id) -> id to now + i }
+            repository.updatePlaylist(playlist.copy(songIds = invertedIds, songAddedAt = stamps))
         }
     }
 

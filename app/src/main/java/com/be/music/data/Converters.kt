@@ -34,4 +34,20 @@ class Converters {
             emptyList()
         }
     }
+
+    // songId -> çalma listesine eklenme zaman damgası (epoch ms)
+    @TypeConverter
+    fun fromSongAddedAtMap(value: Map<Long, Long>?): String {
+        return Json.encodeToString(value ?: emptyMap())
+    }
+
+    @TypeConverter
+    fun toSongAddedAtMap(value: String?): Map<Long, Long> {
+        if (value.isNullOrEmpty()) return emptyMap()
+        return try {
+            Json.decodeFromString<Map<Long, Long>>(value)
+        } catch (e: Exception) {
+            emptyMap()
+        }
+    }
 }
